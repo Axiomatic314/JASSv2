@@ -474,8 +474,14 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		local.jass_query->parse(query, which_query_parser);
 
 		/*
+			Reset the timer
+		*/
+		total_search_time = JASS::timer::start();
+
+		/*
 			Parse the query and extract the list of impact segments
 		*/
+
 		JASS::deserialised_jass_v1::segment_header *current_segment = local.segment_order.get();
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
@@ -485,7 +491,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 //std::cout << "\n";
 		for (const auto &term : local.jass_query->terms())
 			{
-//std::cout << "TERM:" << term << " ";
+// std::cout << "TERM:" << term << " ";
 
 			/*
 				Get the metadata for this term (and if this term isn't in the vocab them move on to the next term)
@@ -638,7 +644,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		/*
 			Re-start the timer
 		*/
-		total_search_time = JASS::timer::start();
+		// total_search_time = JASS::timer::start();
 
 		/*
 			get the next query
