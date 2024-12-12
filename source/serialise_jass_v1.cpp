@@ -253,7 +253,8 @@ namespace JASS
 				name = "Group Elias Gamma SIMD";
 				break;
 			case serialise_jass_v1::jass_v1_codex::qmx:
-				name = "QMX JASS v1";
+				// name = "QMX JASS v1";
+				name = "QMX Improved";
 				break;
 			case serialise_jass_v1::jass_v1_codex::uncompressed:
 				name = "None";
