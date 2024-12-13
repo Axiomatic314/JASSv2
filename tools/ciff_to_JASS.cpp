@@ -235,7 +235,7 @@ int main(int argc, const char *argv[])
 	*/
 	std::vector<std::unique_ptr<JASS::index_manager::delegate>> exporters;
 	if (index_version_2)
-		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
+		exporters.push_back(std::make_unique<JASS::serialise_jass_v2>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::ioqp_bp_128, 1));
 	else		// generate a version 1 index
 		exporters.push_back(std::make_unique<JASS::serialise_jass_v1>(total_documents, JASS::serialise_jass_v1::jass_v1_codex::elias_gamma_simd_vb, 1));
 

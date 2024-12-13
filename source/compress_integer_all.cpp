@@ -33,6 +33,7 @@
 #include "compress_integer_elias_gamma_bitwise.h"
 #include "compress_integer_elias_delta_bitwise.h"
 #include "compress_integer_elias_gamma_simd_vb.h"
+#include "compress_integer_ioqp.h"
 
 namespace JASS
 	{
@@ -68,6 +69,7 @@ namespace JASS
 			{"-c256",  "--compress_256", "Binpack into 256-bit SIMD integers"},
 			{"-c32r",  "--compress_32", "Binpack into 32-bit integers with 8 selectors"},
 			{"-c64",   "--compress_64", "Binpack into 64-bit integers"},
+			{"-cI",	   "--compress_ioqp", "IOQP SIMD BP-128"},
 			}
 		};
 
@@ -88,6 +90,8 @@ namespace JASS
 			return std::make_unique<compress_integer_qmx_jass_v1>();
 		if (shortname == "-cn")
 			return std::make_unique<compress_integer_none>();
+		if (shortname == "-cI")
+			return std::make_unique<compress_integer_ioqp>();
 
 		/*
 			Now the least likley ones.

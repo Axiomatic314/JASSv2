@@ -381,12 +381,14 @@ namespace JASS
 			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				//ioqp decoder also decodes the d-gaps
 				decode(buffer, integers, compressed, compressed_size);
 
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
-				simd::cumulative_sum_256(buffer, integers);
+				// simd::cumulative_sum_256(buffer, integers);
+
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
@@ -426,12 +428,13 @@ namespace JASS
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				decode(buffer, integers, compressed, compressed_size);
 
-				DOCID_TYPE id = 0;
+				// DOCID_TYPE id = 0;
 				DOCID_TYPE *end = buffer + integers;
 				for (auto *current = buffer; current < end; current++)
 					{
-					id += *current;
-					writer.add_rsv(id, impact);
+					// id += *current;
+					// writer.add_rsv(id, impact);
+					writer.add_rsv(*current,impact);
 					}
 				}
 

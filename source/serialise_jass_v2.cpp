@@ -51,8 +51,16 @@ namespace JASS
 		auto compress_into_size = compressed_buffer.size();
 		for (const auto &segment : impact_ordered)
 			{
-			compress_integer::d1_encode(segment.begin(), segment.begin(), segment.size());
-			*segment.begin() -= 1;			// JASS v1 counts documents from 0.
+			// compress_integer::d1_encode(segment.begin(), segment.begin(), segment.size());
+			// *segment.begin() -= 1;			// JASS v1 counts documents from 0.
+
+			//ioqp encoder also handles the delta encoding
+			//since JASSv2 counts documents from 0, we need to start by decrementing everything
+			auto current = segment.begin();
+			while (current < segment.end()){
+				*current -= 1;
+				current += 1;
+			}
 			auto took = encoder->encode(compress_into, compress_into_size, segment.begin(), segment.size());
 			if (took == 0)
 				{
