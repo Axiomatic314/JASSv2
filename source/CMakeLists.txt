@@ -249,9 +249,13 @@ FetchContent_Declare(
 	Corrosion 
 	GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
 )
+set(Rust_TOOLCHAIN nightly)
 # set any global configuration variables, e.g. Rust_TOOLCHAIN before this line
 FetchContent_MakeAvailable(Corrosion)
-corrosion_import_crate(MANIFEST_PATH ${CMAKE_SOURCE_DIR}/Cargo.toml)
+corrosion_import_crate(
+	MANIFEST_PATH ${CMAKE_SOURCE_DIR}/Cargo.toml
+	PROFILE release
+	)
 target_link_libraries(JASSlib PUBLIC ioqp_lib)
 
 
