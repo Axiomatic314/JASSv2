@@ -28,6 +28,8 @@ class JASS_anytime_result
 		std::string results_list;			///< The results list
 		size_t postings_processed;			///< The number of postings processed for this query
 		size_t search_time_in_ns;			///< The time it took to resolve the query
+		size_t rows_touched;				///< The number of dirty flags actually set for the query
+		size_t total_rows;					///< The total number of dirty flags
 
 	/*
 		JASS_ANYTIME_RESULT::JASS_ANYTIME_RESULT()
@@ -41,7 +43,9 @@ class JASS_anytime_result
 		query(),
 		results_list(),
 		postings_processed(0),
-		search_time_in_ns(0)
+		search_time_in_ns(0),
+		rows_touched(0),
+		total_rows(0)
 		{
 		/* Nothing */
 		}
@@ -58,12 +62,14 @@ class JASS_anytime_result
       @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
       @param search_time_in_ns [in] The time it took to resolve the query
 	*/
-	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns) :
+	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns, size_t rows_touched, size_t total_rows) :
 		query_id(query_id),
 		query(query),
 		results_list(results_list),
 		postings_processed(postings_processed),
-		search_time_in_ns(search_time_in_ns)
+		search_time_in_ns(search_time_in_ns),
+		rows_touched(rows_touched),
+		total_rows(total_rows)
 		{
 		/* Nothing */
 		}

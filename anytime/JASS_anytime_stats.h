@@ -28,6 +28,7 @@ class JASS_anytime_stats
 		size_t wall_time_in_ns;						///< Total wall time to do all the search (in nanoseconds)
 		size_t sum_of_CPU_time_in_ns;				///< Sum of the indivivual thread total timers (multi-threaded can be larger than wall_time_in_ns)
 		size_t total_run_time_in_ns;				///< includes I/O and everything (start main() to end of main()).
+		size_t total_rows;
 
 	public:
 		/*
@@ -43,7 +44,8 @@ class JASS_anytime_stats
 			number_of_queries(0),
 			wall_time_in_ns(0),
 			sum_of_CPU_time_in_ns(0),
-			total_run_time_in_ns(0)
+			total_run_time_in_ns(0),
+			total_rows(0)
 			{
 			/* Nothing */
 			}
@@ -69,6 +71,7 @@ static inline std::ostream &operator<<(std::ostream &output, JASS_anytime_stats 
 	output << "Total CPU wall time searching (sum of threads)   : " << data.sum_of_CPU_time_in_ns << " ns\n";
 	output << "Total time excluding I/O (per query)             : " << data.sum_of_CPU_time_in_ns / ((data.number_of_queries == 0) ? 1 : data.number_of_queries) << " ns\n";
 	output << "Total wall clock run time (inc I/O and search)   : " << data.total_run_time_in_ns << " ns\n";
+	output << "Total rows in accumulator table                  : " << data.total_rows << "\n";
 	output << "-------------------\n";
 	return output;
 	}

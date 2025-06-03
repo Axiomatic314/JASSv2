@@ -49,9 +49,9 @@ class JASS_anytime_thread_result
          @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
          @param search_time_in_ns [in] The time it took to resolve the query
 		*/
-		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns)
+		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns, size_t rows_touched, size_t total_rows)
 			{
-			results[query_id] = JASS_anytime_result(query_id, query, results_list, postings_processed, search_time_in_ns);
+			results[query_id] = JASS_anytime_result(query_id, query, results_list, postings_processed, search_time_in_ns, rows_touched, total_rows);
 			}
 
 		/*

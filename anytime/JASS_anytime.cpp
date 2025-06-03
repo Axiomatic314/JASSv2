@@ -279,8 +279,9 @@ static int main_event(int argc, const char *argv[])
 	for (size_t which = 0; which < parameter_threads ; which++)
 		for (const auto &[query_id, result] : output[which])
 			{
-			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns><rows_touched>" << result.rows_touched << "</rows_touched>\n"; 
 			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
+			stats.total_rows = result.total_rows;
 			TREC_file << result.results_list;
 			}
 	stats_file << "</JASSv2stats>\n";

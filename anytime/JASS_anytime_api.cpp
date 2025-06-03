@@ -639,7 +639,8 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		/*
 			Store the results (and the time it took)
 		*/
-		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken);
+		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken,local.jass_query->get_total_allocated_flags(),local.jass_query->get_total_flags());
+
 
 		/*
 			Re-start the timer
