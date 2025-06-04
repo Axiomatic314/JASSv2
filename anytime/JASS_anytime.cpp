@@ -281,7 +281,7 @@ static int main_event(int argc, const char *argv[])
 			{
 			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns><rows_touched>" << result.rows_touched << "</rows_touched>\n"; 
 			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
-			stats.total_rows = result.total_rows;
+			stats.total_rows = result.total_rows; //there is a better way to do this but...
 			TREC_file << result.results_list;
 			}
 	stats_file << "</JASSv2stats>\n";

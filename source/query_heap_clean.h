@@ -253,13 +253,23 @@ namespace JASS
 				{
 				return top_k - needed_for_top_k;
 				}
-
-			forceinline size_t get_total_allocated_flags(void){
-				return accumulators.number_of_dirty_flags_allocated;
+			
+			/*
+				QUERY_HEAP_CLEAN::GET_TOTAL_ALLOCATED_FLAGS()
+				------------------------
+			*/
+			size_t get_total_allocated_flags(void){
+				return accumulators.number_of_dirty_flags_set;
 			}
-			forceinline size_t get_total_flags(void){
+
+			/*
+				QUERY_HEAP_CLEAN::GET_TOTAL_FLAGS()
+				------------------------
+			*/
+			size_t get_total_flags(void){
 				return accumulators.number_of_dirty_flags;
 			}
+
 			/*
 				QUERY_HEAP_CLEAN::REWIND()
 				--------------------------

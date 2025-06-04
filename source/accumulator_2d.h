@@ -94,7 +94,7 @@ namespace JASS
 			size_t number_of_dirty_flags;							///< The number of "rows" (i.e. dirty flags)
 			size_t number_of_accumulators_allocated;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 			size_t number_of_accumulators;						///< The number of accumulators that the user asked for
-			size_t number_of_dirty_flags_allocated;
+			size_t number_of_dirty_flags_set;					///< The number of "rows" actually touched during a query
 
 		private:
 			/*
@@ -180,7 +180,7 @@ namespace JASS
 				number_of_dirty_flags(0),
 				number_of_accumulators_allocated(0),
 				number_of_accumulators(0),
-				number_of_dirty_flags_allocated(0)
+				number_of_dirty_flags_set(0)
 				{
 				/* Nothing */
 				}
@@ -239,8 +239,6 @@ namespace JASS
 					Clear the dirty flags ready for first use.
 				*/
 				rewind();
-
-				number_of_dirty_flags_allocated = 0;
 				}
 
 			/*
@@ -311,6 +309,7 @@ namespace JASS
 //					simd::bzero64(&accumulator[0] + flag * width, width >> 5);
 					memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
 					dirty_flag[flag] = 0;
+					number_of_dirty_flags_set++;
 					}
 #endif
 
@@ -506,6 +505,7 @@ namespace JASS
 #else
 //				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, 0xFF);
 				::memset(&dirty_flag[0], 0xFF, number_of_dirty_flags * sizeof(dirty_flag[0]));
+				number_of_dirty_flags_set = 0;
 #endif			
 				}
 
