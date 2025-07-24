@@ -14,13 +14,17 @@
 #       data file that describes all the Unicode characters - which is used for the isalpha() and similar
 #       methods.
 
-project(JASS)
 
 #
 #CMake verison 3.2 is required to set CMAKE_CXX_STANDARD to C++14.
 #
 
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 4.0)
+
+#
+# This is JASS!
+#
+project(JASS)
 
 # set(CMAKE_VERBOSE_MAKEFILE on)
 
