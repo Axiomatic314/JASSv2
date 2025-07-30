@@ -170,7 +170,7 @@ namespace JASS
 								vbyte_size = compress_integer_variable_byte::encode(destination, end_of_destination - selector, array, elements);
 								}
 							uint32_t *vb_length_locaton = (uint32_t *)encoded;
-							*vb_length_locaton = vbyte_size;
+							*vb_length_locaton = (uint32_t)vbyte_size;
 
 							return (uint8_t *)destination + vbyte_size - (uint8_t *)encoded;						// we've finished the encoding
 							}

@@ -90,7 +90,7 @@ namespace JASS
 			*/
 		public:
 			size_t width;												///< Each dirty flag represents this number of accumulators in a "row"
-			size_t shift;												///< The amount to shift to get the right dirty flag
+			uint32_t shift;											///< The amount to shift to get the right dirty flag
 			size_t number_of_dirty_flags;							///< The number of "rows" (i.e. dirty flags)
 			size_t number_of_accumulators_allocated;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 			size_t number_of_accumulators;						///< The number of accumulators that the user asked for
@@ -211,9 +211,9 @@ namespace JASS
 					number of accumulators then it ballances the number of accumulator with the number of dirty flags.  Both techniques are used.
 				*/
 				if (preferred_width >= 1)
-					shift = preferred_width;
+					shift = (uint32_t)preferred_width;
 				else
-					shift = maths::floor_log2((size_t)sqrt(number_of_accumulators));
+					shift = (uint32_t)maths::floor_log2((size_t)sqrt(number_of_accumulators));
 
 				width = (size_t)1 << shift;
 

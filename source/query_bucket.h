@@ -137,14 +137,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-#ifdef ACCUMULATOR_64s
-						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
-						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
-#else
-						size_t id = parent.accumulator_pointers[where] - parent.shadow_accumulator;
+						DOCID_TYPE id = (DOCID_TYPE)(parent.accumulator_pointers[where] - parent.shadow_accumulator);
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.shadow_accumulator[id]);
-#endif
 						}
 					};
 
@@ -175,12 +169,8 @@ namespace JASS
 				};
 
 		private:
-#ifdef ACCUMULATOR_64s
-			uint64_t sorted_accumulators[MAX_TOP_K];		///< high word is the rsv, the low word is the DocID.
-#else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			ACCUMULATOR_TYPE shadow_accumulator[MAX_DOCUMENTS];				///< Used to deduplicate the top-k
-#endif
 			uint64_t accumulators_used;												///< The number of accumulator_pointers used (can be smaller than top_k)
 
 #ifdef ACCUMULATOR_STRATEGY_2D
@@ -254,7 +244,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, width);
@@ -347,49 +337,6 @@ namespace JASS
 				{
 				if (!sorted)
 					{
-#ifdef ACCUMULATOR_64s
-					/*
-						Turn into keys for sorting
-					*/
-					accumulators_used = 0;
-					for (size_t current_bucket = largest_used_bucket; current_bucket >= smallest_used_bucket; current_bucket--)
-						{
-						size_t end_looking_at = maths::minimum((size_t)bucket_depth[current_bucket], (size_t)rounded_top_k);
-						for (size_t which = 0; which < end_looking_at; which++)
-							{
-							uint64_t doc_id = bucket[current_bucket][which];
-							uint64_t rsv = accumulators.get_value(doc_id);
-							if (rsv != 0)		// only include those not already in the top-k
-								{
-								sorted_accumulators[accumulators_used] = (rsv << ((uint64_t)32)) | doc_id;
-								accumulators[doc_id] = 0;		// mark it as already in the top-k
-
-								accumulators_used++;
-
-								if (accumulators_used >= top_k)
-									goto got_them_all;
-								}
-							}
-						}
-
-				got_them_all:
-					/*
-						Sort on the top-k
-					*/
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
-					top_k_qsort::sort(sorted_accumulators, accumulators_used, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(sorted_accumulators, sorted_accumulators + (top_k > accumulators_used ? accumulators_used : top_k), sorted_accumulators + accumulators_used);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(sorted_accumulators, sorted_accumulators + accumulators_used);
-	#elif defined(AVX512_SORT)
-// NOT CHECKED
-					Sort512_uint64_t::Sort(sorted_accumulators, accumulators_used);
-	#endif
-#else
 					/*
 						Copy to the array of pointers for sorting
 					*/
@@ -433,7 +380,6 @@ namespace JASS
 					// CHECKED
 					assert(false);
 	#endif
-#endif
 					sorted = true;
 					}
 				}

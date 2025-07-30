@@ -51,12 +51,6 @@
 //#define ACCUMULATOR_POINTER_BEAP 1
 
 /*
-	ACCUMULATOR_64s uses the 64-bit unsigned integer encoding of the RSV and DocID - useful for faster sorting (see AVX512_SORT)
-	The alternative is to use pointers to accumulators and sort the pointers.
-*/
-//#define ACCUMULATOR_64s 1
-
-/*
 	Which sort algorithm to use.  There is no default, one of these MUST be defined
 
 	JASS_TOPK_SORT use the JASS top_k_sort() which is a custom median of three medians quick sort
@@ -186,7 +180,7 @@ namespace JASS
 			const std::vector<std::string> *primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
 
 		public:
-			size_t top_k;																	///< The number of results to track.
+			DOCID_TYPE top_k;																	///< The number of results to track.
 
 		public:
 			/*
@@ -222,7 +216,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				this->primary_keys = &primary_keys;
 				this->top_k = top_k;

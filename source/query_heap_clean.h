@@ -139,7 +139,7 @@ namespace JASS
 
 		private:
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
+			DOCID_TYPE needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];				///< Array of pointers to the top k accumulators
 			heap<accumulator_pointer> top_results;									///< Heap containing the top-k results
@@ -184,7 +184,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, width);

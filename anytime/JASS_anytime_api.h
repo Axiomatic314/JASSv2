@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "query.h"
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
@@ -322,7 +323,7 @@ class JASS_anytime_api
          @brief Return the current top-k value
          @return The current top-k value, the maximum number of documents to put into the results list
 		*/
-		uint32_t get_top_k(void);
+		size_t get_top_k(void);
 
 		/*
 			JASS_ANYTIME_API::SET_ACCUMULATOR_WIDTH()

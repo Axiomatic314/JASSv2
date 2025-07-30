@@ -136,14 +136,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-#ifdef ACCUMULATOR_64s
-						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
-						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
-#else
 						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.get_value(id));
-#endif
 						}
 					};
 
@@ -191,14 +185,9 @@ namespace JASS
 			size_t bucket_shift;																	///< The amount to shift to get the right bucket
 			size_t number_of_blocks;													///< The number of blocks
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
-#ifdef ACCUMULATOR_64s
-			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
-			heap<uint64_t> top_results;			///< Heap containing the top-k results
-#else
 			ACCUMULATOR_TYPE zero;															///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];					///< Array of pointers to the top k accumulators
 			heap<accumulator_pointer> top_results;										///< Heap containing the top-k results
-#endif
 			ACCUMULATOR_TYPE page_maximum[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< The current maximum value of the accumulator block
 			ACCUMULATOR_TYPE *page_maximum_pointers[accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>::maximum_number_of_dirty_flags];		///< Poointers to the current maximum value of the accumulator block
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
@@ -216,12 +205,8 @@ namespace JASS
 			*/
 			query_maxblock_heap() :
 				number_of_blocks(0),
-#ifdef ACCUMULATOR_64s
-				top_results(sorted_accumulators, 0)
-#else
 				zero(0),
 				top_results(accumulator_pointers, 0)
-#endif
 				{
 				rewind();
 				}
@@ -248,7 +233,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t preferred_width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t preferred_width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, preferred_width);
@@ -335,11 +320,7 @@ namespace JASS
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
-#ifdef ACCUMULATOR_64s
-				sorted_accumulators[0] = 0;
-#else
 				accumulator_pointers[0] = &zero;
-#endif
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
 				std::fill(page_maximum, page_maximum + number_of_blocks, 0);
@@ -374,33 +355,6 @@ namespace JASS
 					/*
 						Walk through the pages looking for the case where an accumulator in the page should appear in the heap
 					*/
-#ifdef ACCUMULATOR_64s
-					for (size_t page = 0; page < number_of_blocks; page++)
-						{
-//std::cout << "page:" << *page_maximum_pointers[page] << " heap[0]:" << (sorted_accumulators[0] >> 32) << "\n";
-						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= (sorted_accumulators[0] >> 32))
-							{
-							size_t start = (page_maximum_pointers[page] - page_maximum) * block_width;
-							for (size_t which = start; which < start + block_width; which++)
-								{
-								uint64_t key = ((uint64_t)accumulators[which] << (uint64_t)32) | which;
-								if (accumulators.get_value(which) > 0 && key > sorted_accumulators[0])			// == 0 is the case where we're the current bottom of heap so might need to be promoted
-									{
-									if (needed_for_top_k > 0)
-										{
-										sorted_accumulators[--needed_for_top_k] = key;
-										if (needed_for_top_k == 0)
-											top_results.make_heap();
-										}
-									else
-										top_results.push_back(key);				// we're not in the heap so add this accumulator to the heap
-									}
-								}
-							}
-						else
-							break;
-						}
-#else
 					for (size_t page = 0; page < number_of_blocks; page++)
 						{
 						if (*page_maximum_pointers[page] != 0 && *page_maximum_pointers[page] >= *accumulator_pointers[0])
@@ -427,26 +381,9 @@ namespace JASS
 						else
 							break;
 						}
-#endif
-
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
-#ifdef ACCUMULATOR_64s
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k, sorted_accumulators + top_k);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
-	#elif defined(AVX512_SORT)
-// NOT CHECKED
-					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
-	#endif
-#else
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
@@ -460,7 +397,6 @@ namespace JASS
 					// CHECKED
 					assert(false);
 	#endif
-#endif
 					sorted = true;
 					}
 				}

@@ -952,7 +952,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
 				case 42:			//		{"u64", 60, 1, 60}
-					*(destination + 0) = payload >> 0 & 0x0FFFFFFFFFFFFFFF;
+					*(destination + 0) = payload >> 0 & (compress_integer::integer)0x0FFFFFFFFFFFFFFF;
 					destination += 1;
 
 					selector = *source >> 60;
@@ -961,7 +961,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					base = sixty_four_start;
 					break;
 				case 43:			//		{"v64", 64, 1, 0},
-					*(destination + 0) = payload >> 0 & 0xFFFFFFFFFFFFFFFF;
+					*(destination + 0) = payload >> 0 & (compress_integer::integer)0xFFFFFFFFFFFFFFFF;
 					destination += 1;
 
 					source++;
@@ -1277,7 +1277,7 @@ printf("[%d] Decode:%d\n", (int)(destination - destination_at_start), (int)(sele
 					break;
 // LCOV_EXCL_START		// Can't test integers 2^32
 				case 59:			//	 {"p57", 57, 1, 0}
-					*(destination + 0) = payload >> 0 & 0x1FFFFFFFFFFFFFF;
+					*(destination + 0) = payload >> 0 & (compress_integer::integer)0x1FFFFFFFFFFFFFF;
 					destination += 1;
 
 					source++;

@@ -145,7 +145,7 @@ namespace JASS
 		protected:
 			bool verbose;												///< Should this class produce diagnostics on stdout?
 
-			uint64_t documents;										///< The number of documents in the collection
+			JASS::query::DOCID_TYPE documents;					///< The number of documents in the collection
 			file::file_read_only primary_key_memory;			///< Memory used to store the primary key strings
 			std::vector<std::string> primary_key_list;		///< The array of primary keys
 
@@ -293,7 +293,7 @@ namespace JASS
 				@brief Return the number of documents in the collection
 				@return the number of documents in the collection
 			*/
-			size_t document_count(void) const
+			JASS::query::DOCID_TYPE document_count(void) const
 				{
 				return documents;
 				}
@@ -354,7 +354,7 @@ namespace JASS
 					uint64_t *postings_list = (uint64_t *)metadata.offset;
 					segment_header_on_disk *next_segment_in_postings_list = (segment_header_on_disk *)(postings() + postings_list[segment]);
 
-					current_segment->impact = next_segment_in_postings_list->impact * query_term_frequency;
+					current_segment->impact = (uint32_t)(next_segment_in_postings_list->impact * query_term_frequency);
 					current_segment->offset = next_segment_in_postings_list->offset;
 					current_segment->end = next_segment_in_postings_list->end;
 					current_segment->segment_frequency = next_segment_in_postings_list->segment_frequency;

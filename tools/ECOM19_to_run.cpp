@@ -77,7 +77,7 @@ class query_document_price
 	READ_MATRIX()
 	-------------
 */
-void read_matrix(std::string &data, std::unordered_map<int, std::unordered_map<int, int>> &table, int include_minus_1 = true)
+void read_matrix(std::string &data, std::unordered_map<long, std::unordered_map<long, long>> &table, int include_minus_1 = true)
 	{
 	size_t document_id = 0;
 
@@ -160,7 +160,7 @@ fprintf(stderr, "Load Documents\n");
 	/*
 		Parse each document and output the id and the price (column 1 and column 2)
 	*/
-	std::unordered_map<int, double> prices;
+	std::unordered_map<long, double> prices;
 	for(uint8_t *line : document_lines)
 		{
 		if (line == *document_lines.begin())
@@ -182,7 +182,7 @@ fprintf(stderr, "Load training data");
 		if (training_data_text == "")
 			exit(printf("Cannot read documents from file:%s", argv[2]));
 
-	std::unordered_map<int, std::unordered_map<int, int>> training_data;
+	std::unordered_map<long, std::unordered_map<long, long>> training_data;
 	read_matrix(training_data_text, training_data, true);
 
 	/*
@@ -195,7 +195,7 @@ fprintf(stderr, "Load Run\n");
 			exit(printf("Cannot read documents from file:%s", argv[3]));
 
 fprintf(stderr, "Matrix the Run\n");
-	std::unordered_map<int, std::unordered_map<int, int>> run;
+	std::unordered_map<long, std::unordered_map<long, long>> run;
 	read_matrix(run_text, run, false);
 
 	/*

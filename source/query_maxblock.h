@@ -133,14 +133,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-#ifdef ACCUMULATOR_64s
-						DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-						ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
-						return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
-#else
 						size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where]);
 						return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators[id]);
-#endif
 						}
 					};
 
@@ -171,11 +165,7 @@ namespace JASS
 					};
 
 		protected:
-#ifdef ACCUMULATOR_64s
-			uint64_t sorted_accumulators[MAX_DOCUMENTS];									///< high word is the rsv, the low word is the DocID.
-#else
 			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];					///< Array of pointers to the top k accumulators
-#endif
 
 #ifdef ACCUMULATOR_STRATEGY_2D
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
@@ -196,7 +186,7 @@ namespace JASS
 			size_t number_of_blocks;															///< The number of blocks
 			ACCUMULATOR_TYPE page_maximum[MAX_DOCUMENTS];								///< The current maximum value of the accumulator block
 			bool sorted;																			///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
-			size_t non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
+			DOCID_TYPE non_zero_accumulators;														///< The number of non-zero accumulators (should be top-k or less)
 
 		public:
 			/*
@@ -236,7 +226,7 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t preferred_width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t preferred_width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, preferred_width);
@@ -353,13 +343,7 @@ namespace JASS
 							for (ACCUMULATOR_TYPE *which = start; which < start + accumulators.width; which++)
 								{
 								if (*which != 0)
-									{
-	#ifdef ACCUMULATOR_64s
-									sorted_accumulators[non_zero_accumulators++] = ((uint64_t)*which << (uint64_t)32) | (which - &accumulators.accumulator[0]);
-	#else
 									accumulator_pointers[non_zero_accumulators++] = which;
-	#endif
-									}
 								}
 							}
 #else
@@ -373,13 +357,7 @@ namespace JASS
 							for (size_t which = page * block_width; which < page * block_width + block_width; which++)
 								{
 								if (accumulators.get_value(which) != 0)
-									{
-	#ifdef ACCUMULATOR_64s
-									sorted_accumulators[non_zero_accumulators++] = ((uint64_t)accumulators.get_value(which) << (uint64_t)32) | which;
-	#else
 									accumulator_pointers[non_zero_accumulators++] = &accumulators[which];
-	#endif
-									}
 								}
 							}
 #endif
@@ -387,26 +365,6 @@ namespace JASS
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
-#ifdef ACCUMULATOR_64s
-	#ifdef JASS_TOPK_SORT
-					//CHECKED
-					top_k_qsort::sort(sorted_accumulators, non_zero_accumulators, top_k);
-					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					//CHECKED
-					size_t sort_point = maths::minimum(non_zero_accumulators, top_k);
-					std::partial_sort(sorted_accumulators, sorted_accumulators + sort_point, sorted_accumulators + non_zero_accumulators, std::greater<decltype(sorted_accumulators[0])>());
-					non_zero_accumulators = sort_point;
-	#elif defined(CPP_SORT)
-					//CHECKED
-					std::sort(sorted_accumulators, sorted_accumulators + non_zero_accumulators, std::greater<decltype(sorted_accumulators[0])>());
-					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
-	#elif defined(AVX512_SORT)
-// NOT CHECKED
-					Sort512_uint64_t::Sort(sorted_accumulators, non_zero_accumulators);
-					non_zero_accumulators = maths::minimum(non_zero_accumulators, top_k);
-	#endif
-#else
 	#ifdef JASS_TOPK_SORT
 					//CHECKED
 					top_k_qsort::sort(accumulator_pointers, non_zero_accumulators, top_k);
@@ -424,7 +382,6 @@ namespace JASS
 					//CHECKED
 					assert(false);
 	#endif
-#endif
 					sorted = true;
 					}
 				}

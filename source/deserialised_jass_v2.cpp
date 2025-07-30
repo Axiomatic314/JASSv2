@@ -103,7 +103,7 @@ namespace JASS
 		const uint8_t *memory = nullptr;
 		primary_key_memory.read_entire_file(memory);
 		const uint8_t *end_of_file = memory + bytes - sizeof(uint64_t);
-		documents = *(uint64_t *)end_of_file;
+		documents = (query::DOCID_TYPE)(*(uint64_t *)end_of_file);
 		primary_key_list.reserve(documents);
 
 		/*

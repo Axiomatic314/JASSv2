@@ -15,7 +15,7 @@
 class Done : public std::exception
 	{
 	public:
-		const char *what()
+		virtual const char *what() const noexcept
 			{
 			return "Early return";
 			}

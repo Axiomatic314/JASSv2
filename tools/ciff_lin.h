@@ -379,9 +379,9 @@ namespace JASS
 								uint64_t value = protobuf::get_uint64_t(stream);
 
 								if (field == 1)
-									into.docid = value;
+									into.docid = (uint32_t)value;
 								else if (field == 3)
-									into.doclength = value;
+									into.doclength = (uint32_t)value;
 								else
 									return FAIL;
 								}
@@ -697,15 +697,15 @@ namespace JASS
 						uint64_t value = protobuf::get_uint64_t(stream);
 
 						if (field == 1)
-							header.version = value;
+							header.version = (uint32_t)value;
 						else if (field == 2)
-							header.num_postings_lists = value;
+							header.num_postings_lists = (uint32_t)value;
 						else if (field == 3)
-							header.num_docs = value;
+							header.num_docs = (uint32_t)value;
 						else if (field == 4)
-							header.total_postings_lists = value;
+							header.total_postings_lists = (uint32_t)value;
 						else if (field == 5)
-							header.total_docs = value;
+							header.total_docs = (uint32_t)value;
 						else if (field == 6)
 							header.total_terms_in_collection = value;
 						else

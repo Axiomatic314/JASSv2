@@ -42,7 +42,7 @@ namespace JASS
 		*/
 		const uint8_t *memory = nullptr;
 		primary_key_memory.read_entire_file(memory);
-		documents = *reinterpret_cast<const uint64_t *>(&memory[bytes] - sizeof(uint64_t));
+		documents = (query::DOCID_TYPE)(*reinterpret_cast<const uint64_t *>(&memory[bytes] - sizeof(uint64_t)));
 		primary_key_list.reserve(documents);
 
 		/*

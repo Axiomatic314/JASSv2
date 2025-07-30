@@ -76,7 +76,7 @@ JASS_anytime_api::thread_data &JASS_anytime_api::get_thread_local_data(size_t th
 			Allocate a JASS query object
 		*/
 		initial.jass_query = index->codex(codex_name, d_ness);
-		initial.jass_query->init(index->primary_keys(), index->document_count(), top_k, accumulator_width);
+		initial.jass_query->init(index->primary_keys(), index->document_count(), (JASS::query::DOCID_TYPE)top_k, accumulator_width);
 		}
 
 	return initial;
@@ -161,7 +161,7 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion(double percent)
 	if (index == nullptr)
 		return JASS_ERROR_NO_INDEX;
 
-	postings_to_process = (size_t)((double)index->document_count() * percent / 100.0);
+	postings_to_process = (JASS::query::DOCID_TYPE)((double)index->document_count() * percent / 100.0);
 
 	return JASS_ERROR_OK;
 	}
@@ -218,9 +218,9 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process_minimum(size_t count)
 	JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()
 	-------------------------------------------
 */
-JASS::query::DOCID_TYPE JASS_anytime_api::get_postings_to_process(void)
+uint32_t JASS_anytime_api::get_postings_to_process(void)
 	{
-	return postings_to_process;
+	return (uint32_t)postings_to_process;
 	}
 
 /*
@@ -256,7 +256,7 @@ JASS::query::DOCID_TYPE JASS_anytime_api::get_document_count(void)
 	JASS_ANYTIME_API::GET_TOP_K()
 	-----------------------------
 */
-JASS::query::DOCID_TYPE JASS_anytime_api::get_top_k(void)
+size_t JASS_anytime_api::get_top_k(void)
 	{
 	return top_k;
 	}
@@ -480,7 +480,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
 		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
-		uint32_t query_terms_count = local.jass_query->terms().size();
+		size_t query_terms_count = local.jass_query->terms().size();
 		uint64_t total_postings_for_query = 0;
 //std::cout << "\n";
 		for (const auto &term : local.jass_query->terms())

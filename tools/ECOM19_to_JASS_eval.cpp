@@ -88,7 +88,7 @@ int main(int argc, const char *argv[])
 		Since the assessments are a table where the columns are the query numbers, we need to flip them in order to
 		get trec_eval compatible assessments.  To do this we store them hashed first by query_id then by document_id
 	*/
-	std::map<int, std::map<int, int>> assessment_table;
+	std::map<long, std::map<long, long>> assessment_table;
 
 	std::vector<long> query_id;
 	for(uint8_t *line : assessment_lines)
@@ -119,7 +119,7 @@ int main(int argc, const char *argv[])
 				column++;
 			long assessment = atol(column);
 			if (assessment != 0)
-				assessment_table[query_id[column_number]][document_id] = assessment == 1 ? 1 : 0;
+				assessment_table[query_id[column_number]][document_id] = (assessment == 1 ? 1 : 0);
 
 			column_number++;
 			}
@@ -130,7 +130,7 @@ int main(int argc, const char *argv[])
 	*/
 	for (const auto &[qid, document_list] : assessment_table)
 		for (const auto &[document_id, assessment] : document_list)
-			printf("%d 0 %d %d\n", qid, document_id, assessment);
+			printf("%ld 0 %ld %ld\n", qid, document_id, assessment);
 
 	return 0;
 	}

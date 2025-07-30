@@ -105,14 +105,8 @@ namespace JASS
 					*/
 					docid_rsv_pair operator*()
 						{
-#ifdef ACCUMULATOR_64s
-							DOCID_TYPE id = parent.sorted_accumulators[where] & 0xFFFF'FFFF;
-							ACCUMULATOR_TYPE rsv = parent.sorted_accumulators[where] >> 32;
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], rsv);
-#else
 							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
 							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.get_value(id));
-#endif
 						}
 					};
 
@@ -160,10 +154,6 @@ namespace JASS
 
 			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
 
-#ifdef ACCUMULATOR_64s
-			uint64_t sorted_accumulators[MAX_TOP_K];							///< high 32-bits is the rsv, the low 32-bits is the DocID.
-			beap<uint64_t> top_results;											///< Heap containing the top-k results
-#else
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
 	#ifdef ACCUMULATOR_POINTER_BEAP
@@ -171,7 +161,6 @@ namespace JASS
 	#else
 			heap<accumulator_pointer> top_results;		///< Heap containing the top-k results
 	#endif
-#endif
 
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 #ifdef SIMD_JASS_GROUP_ADD_RSV
@@ -192,12 +181,8 @@ namespace JASS
 			*/
 			query_heap() :
 				query(),
-#ifdef ACCUMULATOR_64s
-				top_results(sorted_accumulators, top_k)
-#else
 				zero(0),
 				top_results(accumulator_pointers, top_k)
-#endif
 				{
 				rewind();
 				}
@@ -224,15 +209,11 @@ namespace JASS
 				@param top_k [in]	The top-k documents to return from the query once executed.
 				@param width [in] The width of the 2-d accumulators (if they are being used).
 			*/
-			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, size_t top_k = 10, size_t width = 7)
+			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
 				accumulators.init(documents, width);
-#ifdef ACCUMULATOR_64s
-				top_results.set_top_k((int64_t)top_k);
-#else
 				top_results.set_top_k(top_k);
-#endif
 				}
 
 			/*
@@ -299,11 +280,7 @@ namespace JASS
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
-#ifdef ACCUMULATOR_64s
-				sorted_accumulators[0] = 0;
-#else
 				accumulator_pointers[0] = &zero;
-#endif
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
@@ -327,21 +304,6 @@ namespace JASS
 				{
 				if (!sorted)
 					{
-#ifdef ACCUMULATOR_64s
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
-					top_k_qsort::sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(sorted_accumulators + needed_for_top_k,  sorted_accumulators + top_k, sorted_accumulators + top_k);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(sorted_accumulators + needed_for_top_k, sorted_accumulators + top_k);
-	#elif defined(AVX512_SORT)
-					// CHECKED
-					Sort512_uint64_t::Sort(sorted_accumulators + needed_for_top_k, top_k - needed_for_top_k);
-	#endif
-#else
 	#ifdef JASS_TOPK_SORT
 					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
@@ -355,7 +317,6 @@ namespace JASS
 					// CHECKED
 					assert(false);
 	#endif
-#endif
 					sorted = true;
 					}
 				}
@@ -371,58 +332,6 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-#ifdef ACCUMULATOR_64s
-				ACCUMULATOR_TYPE *which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
-
-				/*
-					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
-				*which += score;
-
-				uint64_t key = ((uint64_t)*which << (uint64_t)32) | document_id;
-
-				if (key >= sorted_accumulators[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
-					{
-					/*
-						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
-					*/
-					if (needed_for_top_k > 0)
-						{
-						/*
-							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-						*/
-						if (*which == score)
-							{
-							sorted_accumulators[--needed_for_top_k] = key;
-							if (needed_for_top_k == 0)
-								top_results.make_beap();
-							}
-						else
-							{
-							/*
-								here we do a "replace under" - who suports that?  We do a linear search.  In the pointer verison its a free operation!
-								If we were to sort first then it'd be N log N to sort and then log N to find, so O(N log N + log N), or O((N + 1) log N), which is O(N log N)
-							*/
-							uint64_t prior_key = ((uint64_t)(*which - score) << (uint64_t)32) | document_id;
-							for (uint64_t *check = sorted_accumulators + needed_for_top_k; check < sorted_accumulators + top_k; check++)
-								if (*check == prior_key)
-									{
-									*check = key;
-									break;			// each instance is unique so we only need to do this once.
-									}
-							}
-						}
-					else
-						{
-						uint64_t prior_key = ((uint64_t)(*which - score) << (uint64_t)32) | document_id;
-
-						if (prior_key < sorted_accumulators[0])
-							top_results.replace_smallest_with(key);															// we're not in the heap so replace top of heap with this document
-						else
-							top_results.guaranteed_replace_with_larger(prior_key, key);									// we're already in the heap so promote this document
-						}
-					}
-#else
 				accumulator_pointer which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
 
 				/*
@@ -476,7 +385,6 @@ namespace JASS
 							}
 						}
 					}
-#endif
 				}
 
 			/*

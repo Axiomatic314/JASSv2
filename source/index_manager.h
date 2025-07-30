@@ -287,7 +287,7 @@ namespace JASS
 			virtual void set_document_length_vector(std::vector<compress_integer::integer> &new_lengths)
 				{
 				document_length_vector = new_lengths;
-				highest_document_id = document_length_vector.size() - 1;		// if size() == 10 then the highest_document_id is 9 (documents have ids 0..9)
+				highest_document_id = (compress_integer::integer)(document_length_vector.size() - 1);		// if size() == 10 then the highest_document_id is 9 (documents have ids 0..9)
 				}
 
 			/*

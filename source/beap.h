@@ -192,10 +192,9 @@ namespace JASS
 			*/
 			bool isbeap(void) const
 				{
-				int64_t end_of_row = 0;
 				for (int64_t current_height = 0; current_height < height; current_height++)
 					{
-					end_of_row += get_last(current_height + 1);
+					get_last(current_height + 1);
 					int64_t end_of_current_row = get_last(current_height);
 					for (int64_t current_location = get_first(current_height); current_location <= end_of_current_row; current_location++)
 						{

@@ -327,7 +327,7 @@ namespace JASS
 					GetSystemInfo(&sysinfo);
 					cpus_in_sockets = sysinfo.dwNumberOfProcessors;
 				#else
-					cpus_in_sockets = sysconf(_SC_NPROCESSORS_ONLN);
+					cpus_in_sockets = (uint32_t)sysconf(_SC_NPROCESSORS_ONLN);
 				#endif
 
 				cpus_in_sockets /= cores_per_die * hyperthreads_per_core;
