@@ -176,7 +176,7 @@ namespace JASS
 		/*
 			Validate that the two samples are the same size
 		*/
-		int32_t number_of_samples = one.size();
+		uint32_t number_of_samples = (uint32_t)one.size();
 		if (two.size() != one.size() || number_of_samples <= 1)
 			return 1;
 

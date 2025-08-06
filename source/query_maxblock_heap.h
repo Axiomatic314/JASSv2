@@ -384,19 +384,7 @@ namespace JASS
 					/*
 						We now sort the array over which the heap is built so that we have a sorted list of docids from highest to lowest rsv.
 					*/
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
-	#elif defined(AVX512_SORT)
-					// CHECKED
-					assert(false);
-	#endif
 					sorted = true;
 					}
 				}

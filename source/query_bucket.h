@@ -367,19 +367,7 @@ namespace JASS
 						Sort on the top-k
 					*/
 
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
 					top_k_qsort::sort(accumulator_pointers, accumulators_used, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(accumulator_pointers, accumulator_pointers + (top_k < accumulators_used ? top_k : accumulators_used), accumulator_pointers + accumulators_used, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(accumulator_pointers, accumulator_pointers + accumulators_used, [](const ACCUMULATOR_TYPE *a, const ACCUMULATOR_TYPE *b) -> bool { return *a > *b ? true : *a < *b ? false : a > b; });
-	#elif defined(AVX512_SORT)
-					// CHECKED
-					assert(false);
-	#endif
 					sorted = true;
 					}
 				}

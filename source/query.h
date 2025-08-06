@@ -7,11 +7,6 @@
 #else
 	#define QUERY_HEAP
 	#define ACCUMULATOR_STRATEGY_2D
-	#define JASS_TOPK_SORT
-
-	/*
-		On Windows the use of std::sort() appears to be the best trade-off (that is, CPP_SORT)
-	*/
 #endif
 
 /*
@@ -43,25 +38,6 @@
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_8
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_8_1
 //#define ACCUMULATOR_COUNTER_INTERLEAVED_4
-
-/*
-	ACCUMULATOR_POINTER_BEAP uses a beap of pointers (rather than a heap of pointers) to store the top-k in the query_heap code.
-	The other query_ classes don't change values in a heap and so a beap will always be slower (as heap is O(log(n)) but beap is O(sqrt(N)))
-*/
-//#define ACCUMULATOR_POINTER_BEAP 1
-
-/*
-	Which sort algorithm to use.  There is no default, one of these MUST be defined
-
-	JASS_TOPK_SORT use the JASS top_k_sort() which is a custom median of three medians quick sort
-	CPP_TOPK_SORT use the C++ std::partial_sort() method
-	CPP_SORT do a full sort using C++ std::sort()
-	AVX512_SORT use the AVX512 sort Sort512_uint64_t::Sort() on 64-bit integers
-*/
-//#define JASS_TOPK_SORT
-//#define CPP_TOPK_SORT
-//#define CPP_SORT
-//#define AVX512_SORT
 
 /*
 	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions

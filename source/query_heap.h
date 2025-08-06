@@ -156,11 +156,7 @@ namespace JASS
 
 			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
-	#ifdef ACCUMULATOR_POINTER_BEAP
-			beap<accumulator_pointer> top_results;		///< Heap containing the top-k results
-	#else
 			heap<accumulator_pointer> top_results;		///< Heap containing the top-k results
-	#endif
 
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
 #ifdef SIMD_JASS_GROUP_ADD_RSV
@@ -304,19 +300,7 @@ namespace JASS
 				{
 				if (!sorted)
 					{
-	#ifdef JASS_TOPK_SORT
-					// CHECKED
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
-	#elif defined(CPP_TOPK_SORT)
-					// CHECKED
-					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
-	#elif defined(CPP_SORT)
-					// CHECKED
-					std::sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k);
-	#elif defined(AVX512_SORT)
-					// CHECKED
-					assert(false);
-	#endif
 					sorted = true;
 					}
 				}
@@ -352,13 +336,7 @@ namespace JASS
 							{
 							accumulator_pointers[--needed_for_top_k] = which;
 							if (needed_for_top_k == 0)
-								{
-	#ifdef ACCUMULATOR_POINTER_BEAP
-								top_results.make_beap();
-	#else
 								top_results.make_heap();
-	#endif
-								}
 							}
 						}
 					else
@@ -367,21 +345,13 @@ namespace JASS
 /**/					if (which < accumulator_pointers[0])		// HERE: BEAP USES <=, HEAP USES <
 							{
 							*which.pointer() += score;					// we weren't in there before but we are now so replace element 0
-	#ifdef ACCUMULATOR_POINTER_BEAP
-							top_results.beap_down(which, 0);
-	#else
 							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-	#endif
 							}
 						else
 							{
 							auto at = top_results.find(which);		// we're already in there so find us and reshuffle the beap.
 							*which.pointer() += score;
-	#ifdef ACCUMULATOR_POINTER_BEAP
-							top_results.beap_down(which, at);
-	#else
 							top_results.promote(which, at);				// we're already in the heap so promote this document
-	#endif
 							}
 						}
 					}

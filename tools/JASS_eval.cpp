@@ -388,16 +388,16 @@ class metric_set
 		*/
 		std::cout << "t-test (1-tail, paired) matrix of p values for " << metric_name[metric] << '\n';
 		/*
-			Get the width of the widest column (the length of the longest run name
+			Get the width of the widest column (the length of the longest run name)
 		*/
-		size_t width = 0;
+		int width = 0;
 		for (const auto &[first_name, first_set] : run_set)
 			{
 			(void)first_name;		// unused, supress warning.
-			width = JASS::maths::maximum(width, first_set.begin()->second.run_id.size());
+			width = JASS::maths::maximum(width, (decltype(width))first_set.begin()->second.run_id.size());
 			}
 
-		width = JASS::maths::maximum(width + 1, static_cast<size_t>(7));			// account for a space and account for the size of a p value.
+		width = JASS::maths::maximum(width + 1, 7);			// account for a space and account for the size of a p value.
 		std::cout.width(width);
 
 		/*
@@ -470,11 +470,11 @@ class metric_set
 		/*
 			Get the width of the widest column (the length of the longest run name
 		*/
-		size_t width = 0;
+		int width = 0;
 		for (const auto metric : over)
-			width = JASS::maths::maximum(width, metric_name[metric].size());
+			width = JASS::maths::maximum(width, (decltype(width))metric_name[metric].size());
 
-		width = JASS::maths::maximum(width + 1, static_cast<size_t>(7));			// account for a space and account for the size of a p value.
+		width = JASS::maths::maximum(width + 1, (decltype(width))static_cast<size_t>(7));			// account for a space and account for the size of a p value.
 		std::cout.width(width);
 
 		/*
