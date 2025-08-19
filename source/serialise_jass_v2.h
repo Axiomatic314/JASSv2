@@ -56,7 +56,7 @@ namespace JASS
 				@param encoder [in] An shared pointer to a codex responsible for performing the compression of postings lists (default = compress_integer_QMX_jass_v1()).
 				@param alignment [in] The start address of a postings list is padded to start on these boundaries (needed for compress_integer_QMX_jass_v1 (use 16), and others).  Default = 0.
 			*/
-			serialise_jass_v2(size_t documents, jass_v1_codex codex = jass_v1_codex::qmx, int8_t alignment = 1) :
+			serialise_jass_v2(size_t documents, jass_v1_codex codex = jass_v1_codex::elias_gamma_simd_vb, int8_t alignment = 1) :
 				serialise_jass_v1(documents, codex, alignment),
 				compressed_headers(allocator)
 				{
