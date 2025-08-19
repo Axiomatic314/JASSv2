@@ -229,91 +229,6 @@ namespace JASS
 		{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},			///< AND mask for 32-bit integers
 		};
 
-#ifdef __AVX512F__
-	/*
-		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD_VB::DECODE()
-		----------------------------------------------
-	*/
-	void compress_integer_elias_gamma_simd_vb::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		__m512i mask;
-		const uint8_t *source = (const uint8_t *)source_as_void;
-		size_t vb_length = *(const uint32_t *)source_as_void;
-		const uint8_t *end_of_source = (const uint8_t *)source_as_void + source_length - vb_length;
-		source += sizeof(uint32_t);
-		__m512i *into = (__m512i *)decoded;
-		uint64_t selector = 0;
-		__m512i payload;
-
-		while (1)
-			{
-			if (selector == 0)
-				{
-				if (source >= end_of_source)
-					break;
-				selector = *(uint32_t *)source;
-				payload = _mm512_loadu_si512((__m256i *)(source + 4));
-				source += 68;
-				}
-
-			uint32_t width = (uint32_t)find_first_set_bit(selector);
-			//coverity[OVERRUN]
-			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-			_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
-			payload = _mm512_srli_epi32(payload, width);
-
-			into++;
-			//coverity[BAD_SHIFT]
-			selector >>= width;
-			}
-
-		if (vb_length != 0)
-			compress_integer_variable_byte::decode((integer *)into, vb_length, source, vb_length);
-		}
-
-	/*
-		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD_VB::DECODE_WITH_WRITER()
-		----------------------------------------------------------
-	*/
-#ifdef SIMD_JASS
-	void compress_integer_elias_gamma_simd_vb::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		__m512i mask;
-		const uint8_t *source = (const uint8_t *)source_as_void;
-		size_t vb_length = *(const uint32_t *)source_as_void;
-		const uint8_t *end_of_source = (const uint8_t *)source_as_void + source_length - vb_length;
-		source += sizeof(uint32_t);
-		uint64_t selector = 0;
-		__m512i payload;
-
-		while (1)
-			{
-			if (selector == 0)
-				{
-				if (source >= end_of_source)
-					break;
-				selector = *(uint32_t *)source;
-				payload = _mm512_loadu_si512((__m256i *)(source + 4));
-				source += 68;
-				}
-
-			uint32_t width = (uint32_t)find_first_set_bit(selector);
-			//coverity[OVERRUN]
-			mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-			add_rsv_d1(_mm512_and_si512(payload, mask));
-			payload = _mm512_srli_epi32(payload, width);
-
-			//coverity[BAD_SHIFT]
-			selector >>= width;
-			}
-
-		if (vb_length != 0)
-			compress_integer_variable_byte::decode_with_writer(vb_length, source, vb_length);
-		}
-#endif
-
-
-#else
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD_VB::DECODE()
 		----------------------------------------------
@@ -359,53 +274,6 @@ namespace JASS
 		}
 
 	/*
-		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD_VB::DECODE_WITH_WRITER()
-		----------------------------------------------------------
-	*/
-#ifdef SIMD_JASS
-	void compress_integer_elias_gamma_simd_vb::decode_with_writer(size_t integers_to_decode, const void *source_as_void, size_t source_length)
-		{
-		__m256i mask;
-		const uint8_t *source = (const uint8_t *)source_as_void;
-		size_t vb_length = *(const uint32_t *)source_as_void;
-		const uint8_t *end_of_source = (const uint8_t *)source_as_void + source_length - vb_length;
-		source += sizeof(uint32_t);
-		uint64_t selector = 0;
-		__m256i payload1;
-		__m256i payload2;
-
-		while (1)
-			{
-			if (selector == 0)
-				{
-				if (source >= end_of_source)
-					break;
-				selector = *(uint32_t *)source;
-				payload1 = _mm256_loadu_si256((__m256i *)(source + 4));
-				payload2 = _mm256_loadu_si256((__m256i *)(source + 36));
-				source += 68;
-				}
-
-			uint32_t width = (uint32_t)find_first_set_bit(selector);
-			//coverity[OVERRUN]
-			mask = _mm256_loadu_si256((__m256i *)mask_set[width]);
-			add_rsv_d1(_mm256_and_si256(payload1, mask));
-			add_rsv_d1(_mm256_and_si256(payload2, mask));
-			payload1 = _mm256_srli_epi32(payload1, width);
-			payload2 = _mm256_srli_epi32(payload2, width);
-
-			//coverity[BAD_SHIFT]
-			selector >>= width;
-			}
-
-		if (vb_length != 0)
-			compress_integer_variable_byte::decode_with_writer(vb_length, source, vb_length);
-		}
-#endif
-
-#endif
-
-	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD_VB::UNITTEST()
 		------------------------------------------------
 	*/
@@ -414,9 +282,6 @@ namespace JASS
 		compress_integer_elias_gamma_simd_vb *compressor;
 
 		compressor = new compress_integer_elias_gamma_simd_vb();
-		std::vector<std::string>etc;
-		compressor->init(etc);
-
 
 		/*
 			Variable byte only

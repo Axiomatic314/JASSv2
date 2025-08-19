@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "file.h"
+#include "query_heap.h"
 #include "commandline.h"
 #include "deserialised_jass_v1.h"
 #include "deserialised_jass_v2.h"
@@ -44,7 +45,7 @@ auto parameters = std::make_tuple					///< The  command line parameter block
 /*!
 	@brief Implementation of add_rsv() that prints an individual posting
 */
-class printer
+class printer : public JASS::query::printer
 	{
 	private:
 		uint64_t impact;			///< The impact score to use when push_back() is called.
@@ -106,7 +107,7 @@ class printer
 			@param document [in] The document identifier (docid) used internally.
 			@param impact [in] The impact score of this term in this document.
 		*/
-		void add_rsv(uint64_t document, uint64_t impact)
+		virtual void add_rsv(JASS::query::DOCID_TYPE document, JASS::query::ACCUMULATOR_TYPE impact)
 			{
 			std::cout << '<' << document << ',' << impact << '>';
 			}
@@ -121,7 +122,7 @@ class printer
 	@param index [in] Reference to a JASS v1 deserialised index object.
 	@param decompressor [in] reference to an object that can decompress a postings list segment.
 */
-void walk_index_v1(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
+void walk_index_v1(JASS::deserialised_jass_v1 &index, JASS::query &decompressor)
 	{
 	printer out_stream;
 
@@ -161,7 +162,7 @@ void walk_index_v1(JASS::deserialised_jass_v1 &index, JASS::compress_integer &de
 	@param index [in] Reference to a JASS v1 deserialised index object.
 	@param decompressor [in] reference to an object that can decompress a postings list segment.
 */
-void walk_index_v2(JASS::deserialised_jass_v1 &index, JASS::compress_integer &decompressor)
+void walk_index_v2(JASS::deserialised_jass_v1 &index, JASS::query &decompressor)
 	{
 	printer out_stream;
 
@@ -258,8 +259,9 @@ int main(int argc, const char *argv[])
 		*/
 		std::string codex_name;
 		int32_t d_ness;
-		std::unique_ptr<JASS::compress_integer> decompressor = index->codex(codex_name, d_ness);
-		decompressor->init(index->primary_keys(), index->document_count());
+		JASS::compress_integer *decompressor = index->codex(codex_name, d_ness);
+		JASS::query_heap processor(*decompressor);
+		processor.init(index->primary_keys(), index->document_count());
 
 		if (!parameter_look_like_atire)
 			{
@@ -273,9 +275,9 @@ int main(int argc, const char *argv[])
 			Print the postings lists
 		*/
 		if (parameter_v2)
-			walk_index_v2(*index, *decompressor);
+			walk_index_v2(*index, processor);
 		else
-			walk_index_v1(*index, *decompressor);
+			walk_index_v1(*index, processor);
 
 		/*
 			Print the primary key list

@@ -13,6 +13,7 @@
 #pragma once
 
 #include "query.h"
+#include "query_heap.h"
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
@@ -62,14 +63,12 @@ class JASS_anytime_api
 			{
 			public:
 				std::unique_ptr<JASS::deserialised_jass_v1::segment_header[]> segment_order;
-				std::unique_ptr<JASS::compress_integer> jass_query;
+				JASS::query *jass_query;
 			};
 
 	private:
 		JASS::deserialised_jass_v1 *index;							///< The index
-		JASS::top_k_limit *precomputed_minimum_rsv_table;		///< Oracle scores (estimates of the rsv for the document at k)
 		size_t postings_to_process;									///< The maximunm number of postings to process
-		size_t postings_to_process_min;								///< Process at least this number of postings
 		double relative_postings_to_process;						///< If not 1 then then this is the proportion of this query's postings that should be processed
 		size_t top_k;														///< The number of documents we want in the results list
 		JASS::parser_query::parser_type which_query_parser;	///< Use the simple ASCII parser or the regular query parser
@@ -113,11 +112,8 @@ class JASS_anytime_api
          @brief Bootstrapping method for a thread to call into anytime()
          @param thiss [in] Pointer to the object to call into
          @param output [out] The results for each query
-         @param index [in] The indexes to use to search
          @param query_ist [in] The list of queries to perform
-         @param precomputed_minimum_rsv_table [in] The list of rsv@k scores for each query, keyed on the query id
-         @param postings_to_process [in] The maximum number of postings to process
-         @param top_k [in] The number of results that should be in the results list
+         @param thread_number [in] The ID of this thread
 		*/
 		static void anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_thread_result &output, std::vector<JASS_anytime_query> &query_list, size_t thread_number);
 
@@ -209,18 +205,6 @@ class JASS_anytime_api
 
 
 		/*
-			JASS_ANYTIME_API::LOAD_ORACLE_SCORES()
-			--------------------------------------
-		*/
-		/*!
-         @brief Load a JASS index
-         @param filename [in] The name of the file containing the oracle scores
-         @details The format of the orace file is lines of  "<QueryId> <rsv>" Where <QueryId> is the ID of the query, and <rsv> is the lowest rsv required to enter the top-k
-         @return JASS_ERROR_OK on success, else an error code
-		*/
-		JASS_ERROR load_oracle_scores(std::string filename);
-
-		/*
 			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION()
 			------------------------------------------------------
 		*/
@@ -232,18 +216,6 @@ class JASS_anytime_api
 		*/
 		JASS_ERROR set_postings_to_process_proportion(double percent);
 
-
-		/*
-			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION_MINIMUM()
-			--------------------------------------------------------------
-		*/
-		/*!
-         @brief Set the minimum number of postings to process as a proportion of the number of documents in the collection.
-         @details An index must be loaded before this method is called, if not it returns JASS_ERROR_NO_INDEX and has no effect.  By default all postings are processed.
-         @param percent [in] The percent to use (for example, 10 is use 10% of the postings)
-         @return JASS_ERROR_OK or JASS_ERROR_NO_INDEX
-		*/
-		JASS_ERROR set_postings_to_process_proportion_minimum(double percent);
 
 		/*
 			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_RELATIVE()
@@ -269,20 +241,6 @@ class JASS_anytime_api
          @return JASS_ERROR_OK
 		*/
 		JASS_ERROR set_postings_to_process(size_t count);
-
-
-		/*
-			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS__MINIMUM()
-			----------------------------------------------------
-		*/
-		/*!
-         @brief Set the minimum number of postings to process as an absolute number.
-         @details An index does not need to be loaded first.  By default all postings are processed.
-         @param count [in] The minimum number of postings to process
-         @return JASS_ERROR_OK
-		*/
-		JASS_ERROR set_postings_to_process_minimum(size_t count);
-
 
 		/*
 			JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()

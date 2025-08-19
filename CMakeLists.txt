@@ -20,6 +20,7 @@
 #
 
 cmake_minimum_required (VERSION 3.31)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "12.7" CACHE STRING "Minimum MacOS deployment version")
 
 #
 # This is JASS!
@@ -89,11 +90,7 @@ if(WIN32)
 		#
 		# At present (August 2019) this desktop doesn not support AVX512
 		#
-		if($ENV{PROCESSOR_IDENTIFIER} STREQUAL "Intel64 Family 6 Model 23 Stepping 6, GenuineIntel")
-			add_definitions("-D__AVX2__=1")
-		else()
-			add_definitions("-D__AVX512F__=1")
-		endif()
+		add_definitions("-D__AVX2__=1")
 	endif()
 else()
 	add_definitions(-march=native -mbmi -mavx2)

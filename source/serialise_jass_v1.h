@@ -153,7 +153,7 @@ namespace JASS
 			index_postings_impact impact_ordered;			///< The re-used impact ordered postings list.
 			std::string compressor_name;						///< The name of the compresson algorithm
 			int compressor_d_ness;								///< The d-ness of the compression algorithm
-			std::unique_ptr<compress_integer> encoder;							///< The integer encoder used to compress postings lists.
+			compress_integer *encoder;							///< The integer encoder used to compress postings lists.
 			allocator_cpp<uint8_t> allocator;				///< C++ allocator between memory object and std::vector object
 			std::vector<uint8_t, allocator_cpp<uint8_t>> compressed_buffer;		///< The buffer used to compress postings into.
 			std::vector<slice, allocator_cpp<slice>> compressed_segments;			///< vector of pointers (and lengths) to the compressed postings.
@@ -305,7 +305,7 @@ namespace JASS
 				@param d_ness [out] Whether the codex requires D0, D1, etc decoding (-1 if it supports decode_and_process via decode_none)
 				@return A reference to a compress_integer that can decode the given codex
 			*/
-			static std::unique_ptr<compress_integer> get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness);
+			static compress_integer *get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness);
 
 			/*
 				SERIALISE_JASS_V1::UNITTEST()

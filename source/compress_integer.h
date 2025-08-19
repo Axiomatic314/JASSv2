@@ -18,11 +18,6 @@
 #include <vector>
 
 #include "asserts.h"
-#include "query_heap.h"
-#include "query_heap_clean.h"
-#include "query_bucket.h"
-#include "query_maxblock.h"
-#include "query_maxblock_heap.h"
 
 namespace JASS
 	{
@@ -36,21 +31,10 @@ namespace JASS
 		methods, encode() and decode().  As those methods are virtual, an object of the given subclass
 		is needed in order to encode or decode integer sequences.
 	*/
-#ifdef QUERY_BUCKETS
-	class compress_integer : public query_bucket
-#elif defined(QUERY_MAXBLOCK)
-	class compress_integer : public query_maxblock
-#elif defined(QUERY_MAXBLOCK_HEAP)
-	class compress_integer : public query_maxblock_heap
-#elif defined(QUERY_HEAP)
-//	class compress_integer : public query_heap
-	class compress_integer : public query_heap_clean
-#else
-	static_assert(false, "One of the RSV managers must be defined");
-#endif
+	class compress_integer
 		{
 		private:
-			static constexpr int MAX_D_GAP = 64;				///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
+			static constexpr int MAX_D_GAP = 64;					///< this is the maximum D-ness that this code supports, it can be changes to anything that won't reuslt in stack overflow.  It is unlikely to exceed 16 for years (from 2019).
 
 		public:
 			typedef uint32_t integer;									///< This class and descendants will work on integers of this size.  Do not change without also changing JASS_COMPRESS_INTEGER_BITS_PER_INTEGER

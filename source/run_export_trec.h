@@ -13,6 +13,7 @@
 #pragma once
 
 #include "reverse.h"
+#include "query_heap.h"
 #include "compress_integer_none.h"
 
 namespace JASS
@@ -45,40 +46,23 @@ namespace JASS
 				@tparam NAME [in] the name of the run, normally a std::string or a char *
 				@param run_name [in] The name of the run
 				@param include_internal_ids [in] if true then this method will include the internal document ids as part of the run name (default = false)
-				@param run_is_ascending [in] is the run in ascending order (and so must be written out backwards)
 			*/
 			template <typename QUERY_ID, typename QUERY, typename NAME>
-			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids, bool run_is_ascending)
+			run_export_trec(std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids)
 				{
 				size_t current = 0;
-				if (run_is_ascending)
-					for (const auto document : reverse(result))
-						{
-						current++;
-						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << (uint32_t)document.rsv << ' ' << run_name;
+				for (query::docid_rsv_pair *document = result.get_first(); document != NULL; document = result.get_next())
+					{
+					current++;
+					stream << topic_id << " Q0 " << *document->primary_key << ' ' << current << ' ' << (uint32_t)document->rsv << ' ' << run_name;
 
-						/*
-							Optionally include the internal document id and rsv for debugging purposes.
-						*/
-						if (include_internal_ids)
-							stream << "(ID:" << document.document_id << "->" << (uint32_t)document.rsv << ")";
-
-						stream << '\n';
-						}
-				else
-					for (const auto document : result)
-						{
-						current++;
-						stream << topic_id << " Q0 "<< document.primary_key << ' ' << current << ' ' << (uint32_t)document.rsv << ' ' << run_name;
-
-						/*
-							Optionally include the internal document id and rsv for debugging purposes.
-						*/
-						if (include_internal_ids)
-							stream << "(ID:" << document.document_id << "->" << (uint32_t)document.rsv << ")";
-
-						stream << '\n';
-						}
+					/*
+						Optionally include the internal document id and rsv for debugging purposes.
+					*/
+					if (include_internal_ids)
+						stream << "(ID:" << document->document_id << "->" << (uint32_t)document->rsv << ")";
+					stream << '\n';
+					}
 				}
 
 			/*
@@ -92,13 +76,14 @@ namespace JASS
 				{
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
-				compress_integer_none *identity = new compress_integer_none;
+				compress_integer_none codex;
+				query_heap *identity = new query_heap(codex);
 				identity->init(primary_keys, 10, 10);
 				std::ostringstream result;
 
 				identity->decode_and_process(1, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
 
-				run_export_trec(result, "qid", *identity, "unittest", true, false);
+				run_export_trec(result, "qid", *identity, "unittest", true);
 
 				std::string correct_answer =
 					"qid Q0 one 1 1 unittest(ID:1->1)\n"
@@ -109,6 +94,8 @@ namespace JASS
 					"qid Q0 six 6 1 unittest(ID:6->1)\n";
 
 				JASS_assert(result.str() == correct_answer);
+
+				delete identity;
 				puts("run_export_trec::PASSED");
 				}
 		};

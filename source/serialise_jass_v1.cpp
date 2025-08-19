@@ -238,7 +238,7 @@ namespace JASS
 		SERIALISE_JASS_V1::GET_COMPRESSOR()
 		-----------------------------------
 	*/
-	std::unique_ptr<compress_integer> serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
+	compress_integer *serialise_jass_v1::get_compressor(jass_v1_codex codex, std::string &name, int32_t &d_ness)
 		{
 		d_ness = 1;
 		switch (codex)

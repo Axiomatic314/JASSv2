@@ -18,7 +18,9 @@
 #include <vector>
 
 #include "file.h"
+#include "query.h"
 #include "slice.h"
+#include "query.h"
 #include "query_term.h"
 #include "compress_integer.h"
 
@@ -145,7 +147,7 @@ namespace JASS
 		protected:
 			bool verbose;												///< Should this class produce diagnostics on stdout?
 
-			JASS::query::DOCID_TYPE documents;					///< The number of documents in the collection
+			query::DOCID_TYPE documents;					///< The number of documents in the collection
 			file::file_read_only primary_key_memory;			///< Memory used to store the primary key strings
 			std::vector<std::string> primary_key_list;		///< The array of primary keys
 
@@ -255,7 +257,7 @@ namespace JASS
 				@param d_ness [out] Whether the codex requires D0, D1, etc decoding (-1 if it supports decode_and_process via decode_none)
 				@return A reference to a compress_integer that can decode the given codex
 			*/
-			std::unique_ptr<compress_integer> codex(std::string &name, int32_t &d_ness) const;
+			compress_integer *codex(std::string &name, int32_t &d_ness) const;
 
 			/*
 				DESERIALISED_JASS_V1::PRIMARY_KEYS()
@@ -293,7 +295,7 @@ namespace JASS
 				@brief Return the number of documents in the collection
 				@return the number of documents in the collection
 			*/
-			JASS::query::DOCID_TYPE document_count(void) const
+			query::DOCID_TYPE document_count(void) const
 				{
 				return documents;
 				}

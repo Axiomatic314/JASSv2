@@ -19,6 +19,7 @@
 #include "accumulator_2d.h"
 #include "JASS_vocabulary.h"
 #include "run_export_trec.h"
+#include "compress_integer_qmx_jass_v1.h"
 
 /*
 	If the line below is enabled then the global operator new and operator delete methods are overwridden
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
 			
 			JASS::string query(memory);					// allocate a string to read into
 
-			auto jass_query_memory = std::make_shared<JASS::query_heap>();	// allocate a JASS query object
+			auto jass_query_memory = std::make_shared<JASS::query_heap>(*new JASS::compress_integer_qmx_jass_v1);	// allocate a JASS query object
 			jass_query_memory->init(primary_key, 1024, 10);
 			auto &jass_query = *jass_query_memory.get();		// pretend its an object
 
@@ -123,7 +124,7 @@ int main(int argc, char *argv[])
 			/*
 				Dump the top-k to the output in trec_eval format.
 			*/
-			JASS::run_export_trec(std::cout, query_id, jass_query, "JASSv2", true, false);
+			JASS::run_export_trec(std::cout, query_id, jass_query, "JASSv2", true);
 			}
 		}
 	catch (std::exception &error)

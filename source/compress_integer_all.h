@@ -96,7 +96,7 @@ namespace JASS
 				@param codex [in] one of the objects in compress_integer_all::compressors[]
 				@return A dynamically allocated object of the same type
 			*/
-			static std::unique_ptr<compress_integer> replicate(std::string &shortname);
+			static compress_integer *replicate(std::string &shortname);
 
 		public:
 			/*
@@ -122,7 +122,7 @@ namespace JASS
 				@param option [in] An array (one per compressor) with (preferably) one set to true.
 				@return A pointer to an integer compressor (caller to free), or the default integer compressor if each member of option is set to false.
 			*/
-			static std::unique_ptr<compress_integer> compressor(const std::array<bool, compressors_size> &option)
+			static compress_integer *compressor(const std::array<bool, compressors_size> &option)
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (option[which])
@@ -158,7 +158,7 @@ namespace JASS
 				@param name [in] The name of the compressor.
 				@return A poionter to a compressor (caller to free) that can encode and decode data using the codex of the given name (or a "null" compressor on error)
 			*/
-			static std::unique_ptr<compress_integer> get_by_name(const std::string &name)
+			static compress_integer *get_by_name(const std::string &name)
 				{
 				for (size_t which = 0; which < compressors_size; which++)
 					if (compressors[which].description == name)

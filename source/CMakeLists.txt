@@ -10,8 +10,6 @@
 
 set(JASSlib_FILES
 	accumulator_2d.h
-	accumulator_counter.h
-	accumulator_counter_interleaved.h
 	allocator.h
 	allocator_cpp.h
 	allocator_memory.h
@@ -187,11 +185,7 @@ set(JASSlib_FILES
 	quantize.h
 	quantize_none.h
 	query.h
-	query_bucket.h
 	query_heap.h
-	query_heap_clean.h
-	query_maxblock_heap.h
-	query_maxblock.h
 	query_term.h
 	query_term_list.h
 	ranking_function.h

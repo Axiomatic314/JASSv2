@@ -1,26 +1,24 @@
 /*
 	QUERY_HEAP.H
 	------------
-	Copyright (c) 2017 Andrew Trotman
+	Copyright (c) 2021 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 /*!
 	@file
-	@brief Everything necessary to process a query using a heap to store the top-k
+	@brief Everything necessary to process a query using a heap to store the top-k.
 	@author Andrew Trotman
 	@copyright 2017 Andrew Trotman
 */
 #pragma once
 
-#include "beap.h"
 #include "heap.h"
-#include "simd.h"
 #include "query.h"
 #include "pointer_box.h"
+#include "top_k_qsort.h"
 #include "accumulator_2d.h"
-#include "sort512_uint64_t.h"
-#include "accumulator_counter.h"
-#include "accumulator_counter_interleaved.h"
+#include "exception_done.h"
+#include "compress_integer_variable_byte.h"
 
 namespace JASS
 	{
@@ -36,136 +34,16 @@ namespace JASS
 		private:
 			typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
 
-			/*
-				CLASS QUERY_HEAP::ITERATOR
-				--------------------------
-			*/
-			/*!
-				@brief Iterate over the top-k
-			*/
-			class iterator
-				{
-				public:
-					query_heap &parent;	///< The query object that this is iterating over
-					int64_t where;			///< Where in the results list we are
-
-				public:
-					/*
-						QUERY_HEAP::ITERATOR::ITERATOR()
-						--------------------------------
-					*/
-					/*!
-						@brief Constructor
-						@param parent [in] The object we are iterating over
-						@param where [in] Where in the results list this iterator starts
-					*/
-					iterator(query_heap &parent, size_t where) :
-						parent(parent),
-						where(where)
-						{
-						/* Nothing */
-						}
-
-					/*
-						QUERY_HEAP::ITERATOR::OPERATOR!=()
-						----------------------------------
-					*/
-					/*!
-						@brief Compare two iterator objects for non-equality.
-						@param with [in] The iterator object to compare to.
-						@return true if they differ, else false.
-					*/
-					bool operator!=(const iterator &with) const
-						{
-						return with.where != where;
-						}
-
-					/*
-						QUERY_HEAP::ITERATOR::OPERATOR++()
-						----------------------------------
-					*/
-					/*!
-						@brief Increment this iterator.
-					*/
-					virtual iterator &operator++(void)
-						{
-						where++;
-						return *this;
-						}
-
-					/*
-						QUERY_HEAP::ITERATOR::OPERATOR*()
-						---------------------------------
-					*/
-					/*!
-						@brief Return a reference to the <document_id,rsv> pair at the current location.
-						@details This method uses ppointer arithmatic to work out the document id from a pointer to the rsv, and
-						having done so it constructs an orderer pair <document_id,rsv> to return to the caller.
-						@return The current object.
-					*/
-					docid_rsv_pair operator*()
-						{
-							size_t id = parent.accumulators.get_index(parent.accumulator_pointers[where].pointer());
-							return docid_rsv_pair(id, (*parent.primary_keys)[id], parent.accumulators.get_value(id));
-						}
-					};
-
-			/*
-				CLASS QUERY_HEAP::REVERSE_ITERATOR
-				----------------------------------
-			*/
-			/*!
-				@brief Reverse iterate over the top-k
-			*/
-			class reverse_iterator : public iterator
-				{
-				public:
-					using iterator::iterator;
-
-					/*
-						QUERY_HEAP::REVERSE_ITERATOR::OPERATOR++()
-						------------------------------------------
-					*/
-					/*!
-						@brief Increment this iterator.
-					*/
-					virtual iterator &operator++(void)
-						{
-						where--;
-						return *this;
-						}
-				};
-
 		private:
-		
-#ifdef ACCUMULATOR_STRATEGY_2D
 			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
-#elif defined(ACCUMULATOR_COUNTER_8)
-			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
-#elif defined(ACCUMULATOR_COUNTER_4)
-			accumulator_counter<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
-#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8)
-			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8> accumulators;	///< The accumulators, one per document in the collection
-#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_8_1)
-			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 8, 1> accumulators;	///< The accumulators, one per document in the collection
-#elif defined(ACCUMULATOR_COUNTER_INTERLEAVED_4)
-			accumulator_counter_interleaved<ACCUMULATOR_TYPE, MAX_DOCUMENTS, 4> accumulators;	///< The accumulators, one per document in the collection
-#endif
-
-			size_t needed_for_top_k;													///< The number of results we still need in order to fill the top-k
-
-			ACCUMULATOR_TYPE zero;																		///< Constant zero used for pointer dereferenced comparisons
-			accumulator_pointer accumulator_pointers[MAX_TOP_K];									///< Array of pointers to the top k accumulators
-			heap<accumulator_pointer> top_results;		///< Heap containing the top-k results
-
+			DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
+			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
+			accumulator_pointer accumulator_pointers[MAX_TOP_K];				///< Array of pointers to the top k accumulators
+			heap<accumulator_pointer> top_results;									///< Heap containing the top-k results
 			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
-#ifdef SIMD_JASS_GROUP_ADD_RSV
-	#ifdef __AVX512F__
-			__m512i lowest_in_heap;														///< vector of the smallest values in the heap
-	#else
-			__m256i lowest_in_heap;														///< vector of the smallest values in the heap
-	#endif
-#endif
+			ACCUMULATOR_TYPE top_k_lower_bound;										///< Lowest possible score to enter the top k
+			docid_rsv_pair next_result;												///< A single result, used but get_first() and get_next()
+			DOCID_TYPE next_result_location;											///< Used by get_first() and get_next() to determine which result is next
 
 		public:
 			/*
@@ -175,8 +53,8 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			query_heap() :
-				query(),
+			query_heap(compress_integer &codex) :
+				query(codex),
 				zero(0),
 				top_results(accumulator_pointers, top_k)
 				{
@@ -192,6 +70,7 @@ namespace JASS
 			*/
 			virtual ~query_heap()
 				{
+				/* Nothing */
 				}
 
 			/*
@@ -213,57 +92,41 @@ namespace JASS
 				}
 
 			/*
-				QUERY_HEAP::BEGIN()
-				-------------------
+				QUERY_HEAP::GET_FIRST()
+				-----------------------
 			*/
 			/*!
-				@brief Return an iterator pointing to start of the top-k
-				@return Iterator pointing to start of the top-k
+				@brief Retrun the top result.
+				@return The first (i.e. top) result in the results list.
 			*/
-			auto begin(void)
+			virtual docid_rsv_pair *get_first(void)
 				{
+				next_result_location = needed_for_top_k;
 				sort();
-				return iterator(*this, needed_for_top_k);
+				return get_next();
 				}
 
 			/*
-				QUERY_HEAP::END()
-				-----------------
+				QUERY_HEAP::GET_NEXT()
+				----------------------
 			*/
 			/*!
-				@brief Return an iterator pointing to end of the top-k
-				@return Iterator pointing to the end of the top-k
+				@brief After calling get_first(), return the next result
+				@return The next result in the results list, or NULL if at end of list
 			*/
-			auto end(void)
+			virtual docid_rsv_pair *get_next(void)
 				{
-				return iterator(*this, top_k);
-				}
+				if (next_result_location == top_k)
+					return NULL;
 
-			/*
-				QUERY_HEAP::RBEGIN()
-				--------------------
-			*/
-			/*!
-				@brief Return a reverse iterator pointing to start of the top-k
-				@return Iterator pointing to start of the top-k
-			*/
-			auto rbegin(void)
-				{
-				sort();
-				return reverse_iterator(*this, top_k - 1);
-				}
+				size_t id = accumulators.get_index(accumulator_pointers[next_result_location].pointer());
+				next_result.document_id = id;
+				next_result.primary_key = &((*primary_keys)[id]);
+				next_result.rsv = accumulators.get_value(id);
 
-			/*
-				QUERY_HEAP::REND()
-				------------------
-			*/
-			/*!
-				@brief Return a reverse iterator pointing to end of the top-k
-				@return Iterator pointing to the end of the top-k
-			*/
-			auto rend(void)
-				{
-				return reverse_iterator(*this, needed_for_top_k - 1);
+				next_result_location++;
+
+				return &next_result;
 				}
 
 			/*
@@ -273,20 +136,15 @@ namespace JASS
 			/*!
 				@brief Clear this object after use and ready for re-use
 			*/
-			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 0, ACCUMULATOR_TYPE largest_possible_rsv = 0)
+			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 1, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
+				zero = 0;
 				accumulator_pointers[0] = &zero;
 				accumulators.rewind();
 				needed_for_top_k = this->top_k;
+				this->top_k_lower_bound = top_k_lower_bound;
 				query::rewind(largest_possible_rsv);
-#ifdef SIMD_JASS_GROUP_ADD_RSV
-	#ifdef __AVX512F__
-				lowest_in_heap = _mm512_setzero_si512();
-	#else
-				lowest_in_heap = _mm256_setzero_si256();
-	#endif
-#endif
 				}
 
 			/*
@@ -296,10 +154,11 @@ namespace JASS
 			/*!
 				@brief sort this resuls list before iteration over it.
 			*/
-			void sort(void)
+			virtual void sort(void)
 				{
 				if (!sorted)
 					{
+//					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 					sorted = true;
 					}
@@ -310,271 +169,66 @@ namespace JASS
 				---------------------
 			*/
 			/*!
-				@brief Add weight to the rsv for document docuument_id
+				@brief Add weight to the rsv for document document_id
 				@param document_id [in] which document to increment
 				@param score [in] the amount of weight to add
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-				accumulator_pointer which = &accumulators[document_id];			// This will create the accumulator if it doesn't already exist.
-
-				/*
-					By doing the add first its possible to reduce the "usual" path through the code to a single comparison.  The JASS v1 "usual" path took three comparisons.
-				*/
+				accumulator_pointer which = &accumulators[document_id];			/* This will create the accumulator if it doesn't already exist. */
 				*which.pointer() += score;
-				if (which >= accumulator_pointers[0])			// ==0 is the case where we're the current bottom of heap so might need to be promoted
+				/*
+					accumulator is less than the heap entry value
+				*/
+				if (*which.pointer() < top_k_lower_bound)
+					return;
+				/*
+					the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
+				*/
+				if (needed_for_top_k > 0)
 					{
 					/*
-						We end up in the top-k, now to work out why.  As this is a rare occurence, we've got a little bit of time on our hands
+						we weren't already in the heap
 					*/
-					if (needed_for_top_k > 0)
+					if (*which.pointer() - score < top_k_lower_bound)
 						{
-						/*
-							the heap isn't full yet - so change only happens if we're a new addition (i.e. the old value was a 0)
-						*/
-						if (*which.pointer() == score)
+						accumulator_pointers[--needed_for_top_k] = which;
+						if (needed_for_top_k == 0)
 							{
-							accumulator_pointers[--needed_for_top_k] = which;
-							if (needed_for_top_k == 0)
-								top_results.make_heap();
+							top_results.make_heap();
+							if (top_k_lower_bound != 1)
+								throw Done(); /* We must be using the Oracle, and we must have filled the top-k and so we can stop processing this query. */
+							top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 							}
 						}
-					else
-						{
-						*which.pointer() -= score;
-/**/					if (which < accumulator_pointers[0])		// HERE: BEAP USES <=, HEAP USES <
-							{
-							*which.pointer() += score;					// we weren't in there before but we are now so replace element 0
-							top_results.push_back(which);				// we're not in the heap so add this accumulator to the heap
-							}
-						else
-							{
-							auto at = top_results.find(which);		// we're already in there so find us and reshuffle the beap.
-							*which.pointer() += score;
-							top_results.promote(which, at);				// we're already in the heap so promote this document
-							}
-						}
+					return;
 					}
-				}
-
-			/*
-				QUERY_HEAP::ADD_RSV_D1()
-				------------------------
-			*/
-			/*!
-				@brief Add weight to the rsv for document docuument_id
-				@param document_ids [in] which document to increment
-			*/
-			forceinline void add_rsv_d1(DOCID_TYPE document_id)
-				{
-				document_id += d1_cumulative_sum;
-				d1_cumulative_sum = document_id;
-				add_rsv(document_id, impact);
-				}
-				
-#ifdef __AVX512F__
-			/*
-				QUERY_HEAP::ADD_RSV_D1()
-				------------------------
-			*/
-			/*!
-				@brief Add weight to the rsv for document docuument_id
-				@param document_ids [in] which document to increment
-			*/
-			forceinline void add_rsv_d1(__m512i document_ids)
-				{
 				/*
-					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
+					accumulator is equal to the heap entry value, now we need to tie break
 				*/
-				__m512i cumsum = _mm512_set1_epi32(d1_cumulative_sum);
-				document_ids = simd::cumulative_sum(document_ids);
-				document_ids = _mm512_add_epi32(document_ids, cumsum);
-
-#ifdef SIMD_JASS_GROUP_ADD_RSV
+				if (*which.pointer() == top_k_lower_bound)
+					{
+					if (which.pointer() < accumulator_pointers[0].pointer())
+						return;
+					top_results.push_back(which); /* we're not in the heap so add this accumulator to the heap */
+					top_k_lower_bound = *accumulator_pointers[0];
+					return;
+					}
 				/*
-					Save the cumulative sum
+					accumulator exceeds the heap entry value, we now need to figure out if the accumulator was already in the heap
+					if the old value didn't exceed the heap entry, or it was equal and we failed the tie-break then we weren't in it
+					otherwise we were and need to be promoted
 				*/
-				d1_cumulative_sum = _mm_extract_epi32(_mm512_extracti32x4_epi32(document_ids, 3), 3);
-
-				/*
-					Add to the accumulators
-				*/
-				__m512i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
-				values = _mm512_add_epi32(values, impacts512);			// add the impact scores
-
-				/*
-					Compare and turn that into a bit patern.. If a >= b then 0xFFFF else 0x0000
-				*/
-				__mmask16 cmp = _mm512_cmpge_epi32_mask(values, lowest_in_heap);
-
-				/*
-					Check that we got all zeros.
-				*/
-				if (cmp == 0)
-					simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write them back to the accumulators
+				if (*which.pointer() - score < top_k_lower_bound || (*which.pointer() - score == top_k_lower_bound && which.pointer() < accumulator_pointers[0].pointer()))
+					top_results.push_back(which);
 				else
 					{
-					/*
-						At lest one document has (probably) made the top-k
-					*/
-					__m128i quad_docs;
-
-					quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-					if (cmp & 0x000F)
-						{
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-						}
-					else
-						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 0));
-
-					quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-					if (cmp & 0x00F0)
-						{
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-						}
-					else
-						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 1));
-
-					quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-					if (cmp & 0x0F00)
-						{
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-						}
-					else
-						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 2));
-
-					quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-					if (cmp & 0xF000)
-						{
-						add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-						add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-						}
-					else
-						simd::scatter(&accumulators.accumulator[0], quad_docs, _mm512_extracti32x4_epi32(values, 3));
+					auto at = top_results.find(which); /* we're already in there so find us and reshuffle the heap. */
+					top_results.promote(which, at); /* we're already in the heap so promote this document */
 					}
-				/*
-					The lowest value in the heap might have changed so update it.
-				*/
-				lowest_in_heap = _mm512_set1_epi32(*accumulator_pointers[0]);
-#else
-				__m128i quad_docs;
-				quad_docs = _mm512_extracti32x4_epi32(document_ids, 0);
-				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
-				quad_docs = _mm512_extracti32x4_epi32(document_ids, 1);
-				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
-				quad_docs = _mm512_extracti32x4_epi32(document_ids, 2);
-				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
-				quad_docs = _mm512_extracti32x4_epi32(document_ids, 3);
-				add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-				add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-				d1_cumulative_sum = _mm_extract_epi32(quad_docs, 3);
-				add_rsv(d1_cumulative_sum, impact);
-#endif
+				top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 				}
-#else
-			/*
-				QUERY_HEAP::ADD_RSV_D1()
-				------------------------
-			*/
-			/*!
-				@brief Add weight to the rsv for document docuument_id
-				@param document_ids [in] which document to increment
-			*/
-			forceinline void add_rsv_d1(__m256i document_ids)
-				{
-				/*
-					Compute the cumulative sum using SIMD (and add the previous cumulative sum)
-				*/
-				document_ids = simd::cumulative_sum(document_ids);
-				__m256i cumsum = _mm256_set1_epi32(d1_cumulative_sum);
-				document_ids = _mm256_add_epi32(document_ids, cumsum);
 
-#ifdef SIMD_JASS_GROUP_ADD_RSV
-				/*
-					Save the cumulative sum
-				*/
-				d1_cumulative_sum = _mm256_extract_epi32(document_ids, 7);
-
-				/*
-					Add to the accumulators
-				*/
-				__m256i values = accumulators[document_ids];			// set the dirty flags and gather() the rsv values
-				values = _mm256_add_epi32(values, impacts);			// add the impact scores
-
-				/*
-					Compare and turn that into a bit patern.. If a >= b then 0xFFFF else 0x0000
-				*/
-				__m256i cmp_greater = _mm256_cmpgt_epi32(values, lowest_in_heap);
-				__m256i cmp_equal = _mm256_cmpeq_epi32(values, lowest_in_heap);
-				__m256i cmp = _mm256_or_si256(cmp_greater, cmp_equal);
-
-				/*
-					Check that we got all zeros.
-				*/
-				if (_mm256_testz_si256(cmp, cmp))
-					simd::scatter(&accumulators.accumulator[0], document_ids, values);		// write them back to the accumulators
-				else
-					{
-					/*
-						At lest one document has (probably) made the top-k
-					*/
-					__m128i quad_docs;
-
-					quad_docs = _mm256_extracti128_si256(document_ids, 0);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
-					quad_docs = _mm256_extracti128_si256(document_ids, 1);
-					add_rsv(_mm_extract_epi32(quad_docs, 0), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 1), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 2), impact);
-					add_rsv(_mm_extract_epi32(quad_docs, 3), impact);
-
-					/*
-						The lowest value in the heap might have changed so update it.
-					*/
-					lowest_in_heap = _mm256_set1_epi32(*accumulator_pointers[0]);
-					}
-
-#else
-				add_rsv(_mm256_extract_epi32(document_ids, 0), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 1), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 2), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 3), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 4), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 5), impact);
-				add_rsv(_mm256_extract_epi32(document_ids, 6), impact);
-				d1_cumulative_sum = _mm256_extract_epi32(document_ids, 7);
-				add_rsv(d1_cumulative_sum, impact);
-#endif
-				}
-#endif
 			/*
 				QUERY_HEAP::DECODE_WITH_WRITER()
 				--------------------------------
@@ -588,40 +242,32 @@ namespace JASS
 			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
-				decode(buffer, integers, compressed, compressed_size);
+				codex.decode(buffer, integers, compressed, compressed_size);
 
-#ifdef PRE_SIMD
-				DOCID_TYPE id = 0;
-				DOCID_TYPE *end = buffer + integers;
-				for (auto *current = buffer; current < end; current++)
-					{
-					id += *current;
-					add_rsv(id, impact);
-					}
-#else
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
 
 				/*
-					Process the d1-decoded postings list.
+					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
+					appears to be as fast as manually unrolling it.
 				*/
-				DOCID_TYPE *end;
-				DOCID_TYPE *current = buffer;
-				end = buffer + (integers & ~0x03);
-				while (current < end)
-					{
-					add_rsv(*(current + 0), impact);
-					add_rsv(*(current + 1), impact);
-					add_rsv(*(current + 2), impact);
-					add_rsv(*(current + 3), impact);
-					current += 4;
-					}
-				end = buffer + integers;
-				while (current < end)
-					add_rsv(*current++, impact);
+				const DOCID_TYPE *end = buffer + integers;
+#if defined(__clang__)
+				#pragma unroll 8
+#elif defined(__GNUC__) || defined(__GNUG__)
+				#pragma GCC unroll 8
 #endif
+				for (DOCID_TYPE *current = buffer; current < end; current++)
+					try
+						{
+						add_rsv(*current, impact);
+						}
+					catch (Done&)
+						{
+						break;
+						}
 				}
 
 			/*
@@ -635,11 +281,10 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			template <typename WRITER>
-			void decode_with_writer(WRITER &writer, size_t integers, const void *compressed, size_t compressed_size)
+			virtual void decode_with_writer(query::printer &writer, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
-				decode(buffer, integers, compressed, compressed_size);
+				codex.decode(buffer, integers, compressed, compressed_size);
 
 				DOCID_TYPE id = 0;
 				DOCID_TYPE *end = buffer + integers;
@@ -660,7 +305,8 @@ namespace JASS
 			static void unittest(void)
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
-				query_heap *query_object = new query_heap;
+				compress_integer_variable_byte codex;
+				query_heap *query_object = new query_heap(codex);
 				query_object->init(keys, 1024, 2);
 				std::ostringstream string;
 
@@ -673,8 +319,8 @@ namespace JASS
 				query_object->add_rsv(1, 1);
 				query_object->add_rsv(1, 14);
 
-				for (const auto rsv : *query_object)
-					string << "<" << (uint64_t)rsv.document_id << "," << (uint64_t)rsv.rsv << ">";
+				for (docid_rsv_pair *rsv = query_object->get_first(); rsv != NULL; rsv = query_object->get_next())
+					string << "<" << rsv->document_id << "," << (uint32_t)rsv->rsv << ">";
 				JASS_assert(string.str() == "<1,15><3,20>");
 
 				/*

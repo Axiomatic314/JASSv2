@@ -28,8 +28,6 @@
 #include "maths.h"
 #include "forceinline.h"
 
-//#define USE_QUERY_IDS 1
-
 namespace JASS
 	{
 	/*
@@ -56,11 +54,7 @@ namespace JASS
 		template<typename A, size_t B, typename C> friend class accumulator_2d;
 
 		private:
-#ifdef USE_QUERY_IDS
 			typedef uint8_t flag_type;
-#else
-			typedef uint8_t flag_type;
-#endif
 
 		private:
 			/*
@@ -68,23 +62,14 @@ namespace JASS
 				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
 				is happening. This code works out the maximums and allocates the arrays.
 			*/
-//			static constexpr size_t maximum_shift = maths::floor_log2(maths::sqrt_compiletime(NUMBER_OF_ACCUMULATORS));					///< The amount to shift to get the right dirty flag
-//			static constexpr size_t maximum_width = 1 << maximum_shift;																					///< Each dirty flag represents this number of accumulators in a "row"
 		public:
-//			static constexpr size_t maximum_number_of_dirty_flags = (NUMBER_OF_ACCUMULATORS + maximum_width - 1) / maximum_width;	///< The number of "rows" (i.e. dirty flags).
 			static constexpr size_t maximum_number_of_dirty_flags = NUMBER_OF_ACCUMULATORS;
 		private:
-//			static constexpr size_t maximum_number_of_accumulators_allocated = maximum_width * maximum_number_of_dirty_flags;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 			static constexpr size_t maximum_number_of_accumulators_allocated = NUMBER_OF_ACCUMULATORS + NUMBER_OF_ACCUMULATORS / 2;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 		public:
 			alignas(__m512i) flag_type dirty_flag[maximum_number_of_dirty_flags];																							///< The dirty flags are kept as bytes for faster lookup
 			alignas(__m512i) ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
 
-#ifdef USE_QUERY_IDS
-			flag_type query_id;
-			__m256i query_ids256;
-			__m512i query_ids512;
-#endif
 			/*
 				At run-time we use these parameters
 			*/
@@ -107,31 +92,6 @@ namespace JASS
 			*/
 			forceinline void clean_flagset(__m128i dirty_flag_set, uint16_t active_set)
 				{
-#ifdef USE_QUERY_IDS
-				uint32_t single_flag;
-				/*
-					At least one of the rows is unclean.  It might be that two bits represent the same row so we must check for
-					that - which mean we can't simply work off of the bit-patterns, we have to also check the dirty flags.
-
-					Somewhat surprisingly, the if-less verison that results in a multiply bu zero is faster than the version
-					that checks with if statements and only calls memset if it has to.
-				*/
-				single_flag = _mm_extract_epi32(dirty_flag_set, 0);
-				::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 0) & 0x01));
-				dirty_flag[single_flag] = query_id;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 1);
-				::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 1) & 0x01));
-				dirty_flag[single_flag] = query_id;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 2);
-				::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 2) & 0x01));
-				dirty_flag[single_flag] = query_id;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 3);
-				::memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 3) & 0x01));
-				dirty_flag[single_flag] = query_id;
-#else
 				uint32_t single_flag;
 				/*
 					At least one of the rows is unclean.  It might be that two bits represent the same row so we must check for
@@ -142,24 +102,19 @@ namespace JASS
 				*/
 				single_flag = _mm_extract_epi32(dirty_flag_set, 0);
 				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 0) & 0x000F));
-//				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * _pext_u32(active_set, 0x000F));
 				dirty_flag[single_flag] = 0x00;
 
 				single_flag = _mm_extract_epi32(dirty_flag_set, 1);
 				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 4) & 0x000F));
-//				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * _pext_u32(active_set, 0x00F0));
 				dirty_flag[single_flag] = 0x00;
 
 				single_flag = _mm_extract_epi32(dirty_flag_set, 2);
 				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 8) & 0x000F));
-//				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * _pext_u32(active_set, 0x0F00));
 				dirty_flag[single_flag] = 0x00;
 
 				single_flag = _mm_extract_epi32(dirty_flag_set, 3);
 				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 12) & 0x000F));
-//				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * _pext_u32(active_set, 0xF000));
 				dirty_flag[single_flag] = 0x00;
-#endif
 				}
 
 		public:
@@ -171,9 +126,6 @@ namespace JASS
 				@brief Constructor.
 			*/
 			accumulator_2d() :
-#ifdef USE_QUERY_IDS
-				query_id(std::numeric_limits<decltype(query_id)>::max()),
-#endif
 				width(1),
 				shift(1),
 				number_of_dirty_flags(0),
@@ -266,18 +218,10 @@ namespace JASS
 			forceinline ELEMENT get_value(size_t which)
 				{
 				size_t flag = which_dirty_flag(which);
-
-#ifdef USE_QUERY_IDS
-				if (dirty_flag[flag] != query_id)
-					return 0;
-				else
-					return accumulator[which];
-#else
 				if (dirty_flag[flag])
 					return 0;
 				else
 					return accumulator[which];
-#endif
 				}
 
 			/*
@@ -295,21 +239,11 @@ namespace JASS
 				{
 				size_t flag = which_dirty_flag(which);
 
-#ifdef USE_QUERY_IDS
-				if (dirty_flag[flag] != query_id)
-					{
-					memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
-					dirty_flag[flag] = query_id;
-					}
-#else
 				if (dirty_flag[flag])
 					{
-//					simd::bzero64(&accumulator[0] + flag * width, width >> 5);
 					memset(&accumulator[0] + flag * width, 0, width * sizeof(accumulator[0]));
-
 					dirty_flag[flag] = 0;
 					}
-#endif
 
 				return accumulator[which];
 				}
@@ -345,24 +279,6 @@ namespace JASS
 				__m256i indexes = which_dirty_flag(which);
 				__m256i flags = simd::gather(&dirty_flag[0], indexes);
 
-#ifdef USE_QUERY_IDS
-				int got = _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(flags, query_ids256)));
-				got = ~got;
-
-				if (got == 0)
-					return simd::gather(&accumulator[0], which);			// no new flags to set
-
-				/*
-					At least one bit is set, work out which ones need processing and process them.
-				*/
-				if (got & 0x000F)
-					clean_flagset(_mm256_extracti128_si256(indexes, 0), got >> 0);
-				if (got & 0x00F0)
-					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 4);
-
-				return simd::gather(&accumulator[0], which);
-#else
-
 				uint32_t got = _mm256_movemask_epi8(flags);
 				if (got == 0)
 					return simd::gather(&accumulator[0], which);
@@ -373,7 +289,6 @@ namespace JASS
 					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 16);
 
 				return simd::gather(&accumulator[0], which);
-#endif
 				}
 
 			/*
@@ -407,26 +322,6 @@ namespace JASS
 				__m512i indexes = which_dirty_flag(which);
 				__m512i flags = simd::gather(&dirty_flag[0], indexes);
 
-#ifdef USE_QUERY_IDS
-				__mmask16 got = _mm512_cmpneq_epi32_mask(flags, query_ids512);
-
-				if (got == 0)
-					return simd::gather(&accumulator[0], which);			// no new flags to set
-
-				/*
-					At least one bit is set, work out which ones need processing and process them.
-				*/
-				if (got & 0x000F)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 0), got >> 0);
-				if (got & 0x00F0)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 1), got >> 4);
-				if (got & 0x0F00)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 2), got >> 8);
-				if (got & 0xF000)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 3), got >> 12);
-
-				return simd::gather(&accumulator[0], which);
-#else
 				__mmask64 got = _mm512_movepi8_mask(flags);
 
 				if (got == 0)
@@ -445,7 +340,6 @@ namespace JASS
 					clean_flagset(_mm512_extracti32x4_epi32(indexes, 3), got >> 48);
 
 				return simd::gather(&accumulator[0], which);
-#endif
 				}
 
 			/*
@@ -486,24 +380,7 @@ namespace JASS
 			*/
 			void rewind(void)
 				{
-#ifdef USE_QUERY_IDS
-				if (query_id == std::numeric_limits<decltype(query_id)>::max())
-					{
-					::memset(&dirty_flag[0], 0, number_of_dirty_flags * sizeof(dirty_flag[0]));
-					query_id = 0;
-					}
-				query_id++;
-
-	#ifdef __AVX512F__
-			query_ids512 = _mm512_set1_epi32(query_id);
-	#else
-			query_ids256 = _mm256_set1_epi32(query_id);
-	#endif
-
-#else
-//				std::fill(dirty_flag, dirty_flag + number_of_dirty_flags, 0xFF);
 				::memset(&dirty_flag[0], 0xFF, number_of_dirty_flags * sizeof(dirty_flag[0]));
-#endif
 				}
 
 			/*

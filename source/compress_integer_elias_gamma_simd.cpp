@@ -241,74 +241,6 @@ namespace JASS
 		{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},			///< AND mask for 32-bit integers
 		};
 
-#ifdef __AVX512F__
-		/*
-			COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
-			-------------------------------------------
-			AVX-512F version
-		*/
-		void compress_integer_elias_gamma_simd::decode(integer *decoded, size_t integers_to_decode, const void *source_as_void, size_t source_length)
-			{
-			__m512i mask;
-			const uint8_t *source = (const uint8_t *)source_as_void;
-			const uint8_t *end_of_source = source + source_length;
-			__m512i *into = (__m512i *)decoded;
-
-			uint64_t selector = *(uint32_t *)source;
-			__m512i payload = _mm512_loadu_si512((__m512i *)(source + 4));
-			source += 68;
-
-			while (1)
-				{
-				uint32_t width = (uint32_t)find_first_set_bit(selector);
-				//coverity[OVERRUN]
-				mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-				_mm512_storeu_si512(into, _mm512_and_si512(payload, mask));
-				payload = _mm512_srli_epi32(payload, width);
-
-				into++;
-				//coverity[BAD_SHIFT]
-				selector >>= width;
-
-				while (selector == 0)
-					{
-					if (source >= end_of_source)
-						return;
-
-					/*
-						Save the remaining bits
-					*/
-					__m512i high_bits = payload;
-
-					/*
-						move on to the next word
-					*/
-					selector = *(uint32_t *)source;
-					payload = _mm512_loadu_si512((__m512i *)(source + 4));
-					source += 68;
-
-					/*
-						get the low bits and write to memory
-					*/
-					width = (uint32_t)find_first_set_bit(selector);
-
-					high_bits = _mm512_slli_epi32(high_bits, width);
-
-					//coverity[OVERRUN]
-					mask = _mm512_loadu_si512((__m512i *)mask_set[width]);
-					_mm512_storeu_si512(into, _mm512_or_si512(_mm512_and_si512(payload, mask), high_bits));
-					payload = _mm512_srli_epi32(payload, width);
-
-					/*
-						move on to the next slector
-					*/
-					into++;
-					//coverity[BAD_SHIFT]
-					selector >>= width;
-					}
-				}
-			}
-#elif defined(__AVX2__)
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::DECODE()
 		-------------------------------------------
@@ -384,9 +316,6 @@ namespace JASS
 			}
 		}
 
-#else
-	#error "Must have either AVX2 or AVX512"
-#endif
 
 	/*
 		COMPRESS_INTEGER_ELIAS_GAMMA_SIMD::UNITTEST()
@@ -397,8 +326,6 @@ namespace JASS
 		compress_integer_elias_gamma_simd *compressor;
 
 		compressor = new compress_integer_elias_gamma_simd();
-		std::vector<std::string>pk;
-		compressor->init(pk);
 		compress_integer::unittest(*compressor);
 
 		std::vector<uint32_t> broken_sequence =

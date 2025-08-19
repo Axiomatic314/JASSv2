@@ -31,9 +31,7 @@ void JASS_anytime_api::anytime_bootstrap(JASS_anytime_api *thiss, JASS_anytime_t
 JASS_anytime_api::JASS_anytime_api()
 	{
 	index = nullptr;
-	precomputed_minimum_rsv_table = new JASS::top_k_limit;
 	postings_to_process = (std::numeric_limits<size_t>::max)();
-	postings_to_process_min = 0;
 	relative_postings_to_process = 1;
 	top_k = 10;
 	which_query_parser = JASS::parser_query::parser_type::query;
@@ -48,7 +46,6 @@ JASS_anytime_api::JASS_anytime_api()
 JASS_anytime_api::~JASS_anytime_api()
 	{
 	delete index;
-	delete precomputed_minimum_rsv_table;
 	}
 
 /*
@@ -75,7 +72,7 @@ JASS_anytime_api::thread_data &JASS_anytime_api::get_thread_local_data(size_t th
 		/*
 			Allocate a JASS query object
 		*/
-		initial.jass_query = index->codex(codex_name, d_ness);
+		initial.jass_query = new JASS::query_heap(*index->codex(codex_name, d_ness));
 		initial.jass_query->init(index->primary_keys(), index->document_count(), (JASS::query::DOCID_TYPE)top_k, accumulator_width);
 		}
 
@@ -134,25 +131,6 @@ JASS_ERROR JASS_anytime_api::load_index(size_t index_version, const std::string 
 	}
 
 /*
-	JASS_ANYTIME_API::LOAD_ORACLE_SCORES()
-	--------------------------------------
-*/
-JASS_ERROR JASS_anytime_api::load_oracle_scores(std::string filename)
-	{
-	try
-		{
-		delete precomputed_minimum_rsv_table;
-		precomputed_minimum_rsv_table = new JASS::top_k_limit(filename);
-		}
-	catch(...)
-		{
-		return JASS_ERROR_FAIL;
-		}
-
-	return JASS_ERROR_OK;
-	}
-
-/*
 	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION()
 	------------------------------------------------------
 */
@@ -162,20 +140,6 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion(double percent)
 		return JASS_ERROR_NO_INDEX;
 
 	postings_to_process = (JASS::query::DOCID_TYPE)((double)index->document_count() * percent / 100.0);
-
-	return JASS_ERROR_OK;
-	}
-
-/*
-	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION_MINIMUM()
-	--------------------------------------------------------------
-*/
-JASS_ERROR JASS_anytime_api::set_postings_to_process_proportion_minimum(double percent)
-	{
-	if (index == nullptr)
-		return JASS_ERROR_NO_INDEX;
-
-	postings_to_process_min = (size_t)((double)index->document_count() * percent / 100.0);
 
 	return JASS_ERROR_OK;
 	}
@@ -201,18 +165,6 @@ JASS_ERROR JASS_anytime_api::set_postings_to_process(size_t count)
 
 	return JASS_ERROR_OK;
 	}
-
-/*
-	JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_MINIMUM()
-	---------------------------------------------------
-*/
-JASS_ERROR JASS_anytime_api::set_postings_to_process_minimum(size_t count)
-	{
-	postings_to_process_min = count;
-
-	return JASS_ERROR_OK;
-	}
-
 
 /*
 	JASS_ANYTIME_API::GET_POSTINGS_TO_PROCESS()
@@ -538,11 +490,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		current_segment->impact = 0;
 
 		/*
-			Compute the minimum rsv necessary to get into the top k.
-			its not yet clear whether we can set the default to the highest segment score, segment_order->impact
+			Work out the dynamic impact score scaling factor (if necessary)
 		*/
 		bool scale_rsv_scores = false;
-		uint32_t rsv_at_k = precomputed_minimum_rsv_table->empty() ? 1 : (*precomputed_minimum_rsv_table)[query_id];
 		largest_possible_rsv_with_overflow = largest_possible_rsv;
 		if (largest_possible_rsv > JASS::query::MAX_RSV)
 			{
@@ -551,19 +501,12 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			largest_possible_rsv = JASS::query::MAX_RSV;
 
 			/*
-				This line (commented out) re-scales the rsv_at_k value, which we need to do if that score comes
-				from some other search engine (which is unlikely to occur).
-			*/
-//			rsv_at_k = (JASS::query::ACCUMULATOR_TYPE)((double)rsv_at_k / (double)largest_possible_rsv * (double)JASS::query::MAX_RSV);
-
-			/*
 				Check for zeros
 			*/
 			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
 			}
-		rsv_at_k = rsv_at_k == 0 ? 1 : rsv_at_k;			// rsv_at_k cannot be 0 (because at least one search term must be in the document)
 
-		local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
+		local.jass_query->rewind(smallest_possible_rsv, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*
@@ -596,23 +539,10 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
 			local.jass_query->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset);
-
-			/*
-				Early terminate if we have filled the heap with documents having rsv scores higher than the rsv_at_k oracle score.
-			*/
-			if (rsv_at_k > 1 && local.jass_query->size() >= top_k && postings_processed >= postings_to_process_min)
-				break;
 			}
-		/*
-			If were using the oracle rsv_at_k predictions and we have fewer than top_k documents in the top_k list
-			then it might be becasue the oracle prediction was too high.  If this is the case then we need to top-up
-			the top-k
-		*/
-		if (rsv_at_k > 1 && local.jass_query->size() < top_k)
-			local.jass_query->top_up();
 
 		/*
-			Finally we have the results list in the heap, no sort it.
+			Finally we have the results list in the heap, now sort it.
 		*/
 		local.jass_query->sort();
 		
@@ -625,11 +555,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			Serialise the results list (don't time this)
 		*/
 		std::ostringstream results_list;
-#if defined(ACCUMULATOR_64s) || defined(QUERY_HEAP) || defined(QUERY_MAXBLOCK_HEAP)
-		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true, true);
-#else
-		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true, false);
-#endif
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true);
 		/*
 			Store the results (and the time it took)
 		*/

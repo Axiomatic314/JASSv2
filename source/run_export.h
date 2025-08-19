@@ -56,15 +56,14 @@ namespace JASS
 				@tparam NAME [in] the name of the run, normally a std::string or a char *
 				@param run_name [in] The name of the run
 				@param include_internal_ids [in] if true then this method will include the internal document ids as part of the run name (default = false)
-				@param run_is_ascending [in] is the run in ascending order (and so must be written out backwards)
 			*/
 			template <typename QUERY_ID, typename QUERY, typename NAME>
-			run_export(format forum, std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids, bool run_is_ascending)
+			run_export(format forum, std::ostream &stream, const QUERY_ID &topic_id, QUERY &result, const NAME &run_name, bool include_internal_ids)
 				{
 				switch (forum)
 					{
 					case TREC:
-						run_export_trec(stream, topic_id, result, run_name, include_internal_ids, run_is_ascending);
+						run_export_trec(stream, topic_id, result, run_name, include_internal_ids);
 						break;
 					default:
 						JASS_assert(false);		//LCOVE_EXCL_LINE		// should never happen
@@ -83,13 +82,14 @@ namespace JASS
 				{
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
-				compress_integer_none *identity = new compress_integer_none;
+				compress_integer_none codex;
+				query_heap *identity = new query_heap(codex);
 				identity->init(primary_keys, 10, 10);
 				std::ostringstream result;
 
 				identity->decode_and_process(1, integer_sequence.size(), integer_sequence.data(), sizeof(integer_sequence[0]) * integer_sequence.size());
 
-				run_export(run_export::TREC, result, "qid", *identity, "unittest", true, false);
+				run_export(run_export::TREC, result, "qid", *identity, "unittest", true);
 
 				std::string correct_answer =
 					"qid Q0 one 1 1 unittest(ID:1->1)\n"

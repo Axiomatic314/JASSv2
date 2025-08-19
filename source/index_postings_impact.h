@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <limits>
+#include <sstream>
 
 #include "allocator.h"
 #include "compress_integer.h"

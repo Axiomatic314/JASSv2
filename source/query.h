@@ -1,66 +1,3 @@
-#ifdef JASS_HAS_EXTERNAL_CONFIGURATION
-	#define QUOTEME(x) QUOTEME_1(x)
-	#define QUOTEME_1(x) #x
-	#define INCLUDE_FILE(x) QUOTEME(x)
-	#include INCLUDE_FILE(JASS_HAS_EXTERNAL_CONFIGURATION)
-	#error "You should not be doing this"
-#else
-	#define QUERY_HEAP
-	#define ACCUMULATOR_STRATEGY_2D
-#endif
-
-/*
-	Which top-k algorithm to use.  There is no default, one of these MUST be defined
-
-	QUERY_HEAP uses the heap to store the rsvs
-	QUERY_BUCKETS uses the bucket apprach to the top-k, the alternative is the query_heap
-	QUERY_MAXBLOCK uses the max-block approach to the top-k, the alternative is the query_heap
-	QUERY_MAXBLOCK_HEAP uses the max-block approach to the top-k (in a heap), the alternative is the query_heap
-*/
-//#define QUERY_HEAP
-//#define QUERY_BUCKETS
-//#define QUERY_MAXBLOCK
-//#define QUERY_MAXBLOCK_HEAP
-
-/*
-	Which accmulator allocator strategy to use
-
-	ACCUMULATOR_STRATEGY_2D uses the ATIRE 2D accumulator dirty pages strategy
-	ACCUMULATOR_COUNTER_8 uses an 8-bit counter per accumulator incremented with each query, in they do not match then zero just that one accumulator
-	ACCUMULATOR_COUNTER_4 uses an 4-bit counter per accumulator incremented with each query, in they do not match then zero just that one accumulator
-	ACCUMULATOR_COUNTER_INTERLEAVED_8 same as ACCUMULATOR_COUNTER_8, but interleaved the flags with the accumulators, and uses 21 accumulators per chunk (so flag + accumulators approximately equals cachline size)
-	ACCUMULATOR_COUNTER_INTERLEAVED_8_1 same as ACCUMULATOR_COUNTER_8, but interleaved the flags with the accumulators, one flag per accumulator
-	ACCUMULATOR_COUNTER_INTERLEAVED_4 same as ACCUMULATOR_COUNTER_4, but interleaved the flags with the accumulators, and uses 25 accumulators per chunk (so flag + accumulators approximately equals cachline size)
-*/
-//#define ACCUMULATOR_STRATEGY_2D
-//#define ACCUMULATOR_COUNTER_8
-//#define ACCUMULATOR_COUNTER_4
-//#define ACCUMULATOR_COUNTER_INTERLEAVED_8
-//#define ACCUMULATOR_COUNTER_INTERLEAVED_8_1
-//#define ACCUMULATOR_COUNTER_INTERLEAVED_4
-
-/*
-	PRE_SIMD is used with the heap to make the cumulative sum code work without SIMD instructions
-*/
-//#define PRE_SIMD
-
-/*
-	SIMD_ADD_RSV_AFTER_CUMSUM uses AVX instructions to process the postings in set_rsv() after the d1 decoding has already been done
-	the alternativce is to process each posting one at a time.
-*/
-//#define SIMD_ADD_RSV_AFTER_CUMSUM 1
-
-/*
-	SIMD_JASS uses the decompressor that calls add_rsv() directly (single pass) rather than decompressng then processing (in 2 passes)
-*/
-//#define SIMD_JASS 1
-
-/*
-	SIMD_JASS_GROUP_ADD_RSV uses the AVX512 version of the processing of the postings list in add_rsv(), the alternative
-	is to extract each doc id and process them one at a time
-*/
-//#define SIMD_JASS_GROUP_ADD_RSV 1
-
 /*
 	QUERY.H
 	-------
@@ -79,10 +16,11 @@
 
 #include <immintrin.h>
 
-#include "top_k_qsort.h"
+#include "forceinline.h"
 #include "parser_query.h"
 #include "query_term_list.h"
 #include "allocator_memory.h"
+#include "compress_integer.h"
 
 namespace JASS
 	{
@@ -102,14 +40,29 @@ namespace JASS
 			typedef uint32_t DOCID_TYPE;										///< the type of a document id (from a compressor)
 
 		public:
-			static constexpr size_t MAX_DOCUMENTS = 155000000;					///< the maximum number of documents an index can hold
-			static constexpr size_t MAX_TOP_K = 1000;							///< the maximum top-k value
+			static constexpr size_t MAX_DOCUMENTS = 200'000'000;					///< the maximum number of documents an index can hold
+			static constexpr size_t MAX_TOP_K = 1'000;							///< the maximum top-k value
 			static constexpr size_t MAX_RSV = (std::numeric_limits<ACCUMULATOR_TYPE>::max)();
 
 		public:
 			/*
-				CLASS QUERY::DOCID_RSV_PAIR()
-				-----------------------------
+				CLASS QUERY::PRINTER
+				--------------------
+			*/
+			class printer
+				{
+				public:
+					/*!
+						@brief print (somehow) the ordered pair of document_id and score.  This might involve processing it somehow too
+						@param document_id [in] The document identifier
+						@param score [in] The impact score of this term in this document.
+					*/
+					virtual void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score) = 0;
+				};
+
+			/*
+				CLASS QUERY::DOCID_RSV_PAIR
+				---------------------------
 			*/
 			/*!
 				@brief Literally a <document_id, rsv> ordered pair.
@@ -118,42 +71,21 @@ namespace JASS
 				{
 				public:
 					size_t document_id;							///< The document identifier
-					const std::string &primary_key;			///< The external identifier of the document (the primary key)
+					const std::string *primary_key;			///< The external identifier of the document (the primary key)
 					ACCUMULATOR_TYPE rsv;						///< The rsv (Retrieval Status Value) relevance score
-
-				public:
-					/*
-						QUERY::DOCID_RSV_PAIR::DOCID_RSV_PAIR()
-						---------------------------------------
-					*/
-					/*!
-						@brief Constructor.
-						@param document_id [in] The document Identifier.
-						@param key [in] The external identifier of the document (the primary key).
-						@param rsv [in] The rsv (Retrieval Status Value) relevance score.
-					*/
-					docid_rsv_pair(size_t document_id, const std::string &key, ACCUMULATOR_TYPE rsv) :
-						document_id(document_id),
-						primary_key(key),
-						rsv(rsv)
-						{
-						/* Nothing */
-						}
 				};
 
 		protected:
-			__m512i impacts512;															///< The impact score to be added on a call to add_rsv()
-			__m256i impacts256;															///< The impact score to be added on a call to add_rsv()
 			ACCUMULATOR_TYPE impact;													///< The impact score to be added on a call to add_rsv()
-			DOCID_TYPE d1_cumulative_sum;												///<< The current cumulative sum from d1 decoding
 
 			allocator_pool memory;														///< All memory allocation happens in this "arena"
-			std::vector<__m512i> decompress_buffer;								///< The delta-encoded decopressed integer sequence.
+			std::vector<DOCID_TYPE> decompress_buffer;							///< The delta-encoded decopressed integer sequence.
 			DOCID_TYPE documents;														///< The numnber of documents this index contains
 
 			parser_query parser;															///< Parser responsible for converting text into a parsed query
 			query_term_list *parsed_query;											///< The parsed query
 			const std::vector<std::string> *primary_keys;						///< A vector of strings, each the primary key for the document with an id equal to the vector index
+			compress_integer &codex;													///< The decompressor to use.
 
 		public:
 			DOCID_TYPE top_k;																	///< The number of results to track.
@@ -166,19 +98,16 @@ namespace JASS
 			/*!
 				@brief Constructor
 			*/
-			query() :
-#ifdef __AVX512F__
-				impacts512(_mm512_setzero_si512()),
-#endif
-				impacts256(_mm256_setzero_si256()),
+			query(compress_integer &codex) :
 				impact(1),
-				d1_cumulative_sum(0),
 				documents(0),
 				parser(memory),
 				parsed_query(nullptr),
 				primary_keys(nullptr),
+				codex(codex),
 				top_k(0)
 				{
+				/*	 Nothing */
 				}
 
 			/*
@@ -242,6 +171,26 @@ namespace JASS
 				}
 
 			/*
+				QUERY::GET_FIRST()
+				------------------
+			*/
+			/*!
+				@brief Retrun the top result.
+				@return The first (i.e. top) result in the results list.
+			*/
+			virtual docid_rsv_pair *get_first(void) = 0;
+
+			/*
+				QUERY::GET_NEXT()
+				-----------------
+			*/
+			/*!
+				@brief After calling get_first(), return the next result
+				@return The next result in the results list, or NULL if at end of list
+			*/
+			virtual docid_rsv_pair *get_next(void) = 0;
+
+			/*
 				QUERY::REWIND()
 				---------------
 			*/
@@ -255,7 +204,6 @@ namespace JASS
 				{
 				delete parsed_query;
 				parsed_query = new query_term_list;
-				d1_cumulative_sum = 0;
 				impact = 0;
 				}
 
@@ -270,26 +218,16 @@ namespace JASS
 			forceinline void set_impact(ACCUMULATOR_TYPE score)
 				{
 				impact = score;
-#ifdef SIMD_JASS
-	#ifdef __AVX512F__
-				impacts512 = _mm512_set1_epi32(impact);
-	#else
-				impacts256 = _mm256_set1_epi32(impact);
-	#endif
-#endif
 				}
 
 			/*
-				QUERY::INIT_ADD_RSV()
-				---------------------
+				QUERY::SORT()
+				-------------
 			*/
 			/*!
-				@brief Set the d1_cumulative_sum to zero
+				@brief sort this resuls list before iteration over it.
 			*/
-			forceinline void init_add_rsv()
-				{
-				d1_cumulative_sum = 0;
-				}
+			virtual void sort(void) = 0;
 
 			/*
 				QUERY_HEAP::DECODE_AND_PROCESS()
@@ -305,7 +243,6 @@ namespace JASS
 			forceinline void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				set_impact(impact);
-				init_add_rsv();
 				decode_with_writer(integers, compressed, compressed_size);
 				}
 
@@ -319,23 +256,19 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
-				{
-				}
+			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size) = 0;
 
 			/*
-				QUERY_HEAP::DECODE()
-				--------------------
+				QUERY::DECODE_WITH_WRITER()
+				---------------------------
 			*/
 			/*!
-				@brief Decode a sequence of integers encoded with this codex.
-				@param decoded [out] The sequence of decoded integers.
-				@param integers_to_decode [in] The minimum number of integers to decode (it may decode more).
-				@param source [in] The encoded integers.
-				@param source_length [in] The length (in bytes) of the source buffer.
+				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
+				@param writer [in] the device to write to
+				@param integers [in] The number of integers that are compressed.
+				@param compressed [in] The compressed sequence.
+				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode(DOCID_TYPE *decoded, size_t integers_to_decode, const void *source, size_t source_length)
-				{
-				}
+			virtual void decode_with_writer(query::printer &writer, size_t integers, const void *compressed, size_t compressed_size) = 0;
 		};
 	}

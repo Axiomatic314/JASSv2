@@ -75,67 +75,67 @@ namespace JASS
 		COMPRESS_INTEGER_ALL::REPLICATE()
 		---------------------------------
 	*/
-	std::unique_ptr<compress_integer>compress_integer_all::replicate(std::string &shortname)
+	compress_integer *compress_integer_all::replicate(std::string &shortname)
 		{
 		/*
 			Put the most likley ones first.
 		*/
 		if (shortname == "-cE")
-			return std::make_unique<compress_integer_elias_gamma_simd>();
+			return new compress_integer_elias_gamma_simd;
 		if (shortname == "-cF")
-			return std::make_unique<compress_integer_elias_gamma_simd_vb>();
+			return new compress_integer_elias_gamma_simd_vb;
 		if (shortname == "-cZ")
-			return std::make_unique<compress_integer_qmx_jass_v1>();
+			return new compress_integer_qmx_jass_v1;
 		if (shortname == "-cn")
-			return std::make_unique<compress_integer_none>();
+			return new compress_integer_none;
 
 		/*
 			Now the least likley ones.
 		*/
 		if (shortname == "-cC")
-			return std::make_unique<compress_integer_carry_8b>();
+			return new compress_integer_carry_8b;
 		if (shortname == "-cs")
-			return std::make_unique<compress_integer_simple_9>();
+			return new compress_integer_simple_9;
 		if (shortname == "-cT")
-			return std::make_unique<compress_integer_simple_8b>();
+			return new compress_integer_simple_8b;
 		if (shortname == "-ct")
-			return std::make_unique<compress_integer_simple_16>();
+			return new compress_integer_simple_16;
 		if (shortname == "-c64")
-			return std::make_unique<compress_integer_bitpack_64>();
+			return new compress_integer_bitpack_64;
 		if (shortname == "-cg")
-			return std::make_unique<compress_integer_elias_gamma>();
+			return new compress_integer_elias_gamma;
 		if (shortname == "-cd")
-			return std::make_unique<compress_integer_elias_delta>();
+			return new compress_integer_elias_delta;
 		if (shortname == "-c128")
-			return std::make_unique<compress_integer_bitpack_128>();
+			return new compress_integer_bitpack_128;
 		if (shortname == "-c256")
-			return std::make_unique<compress_integer_bitpack_256>();
+			return new compress_integer_bitpack_256;
 		if (shortname == "-cr")
-			return std::make_unique<compress_integer_relative_10>();
+			return new compress_integer_relative_10;
 		if (shortname == "-cc")
-			return std::make_unique<compress_integer_carryover_12>();
+			return new compress_integer_carryover_12;
 		if (shortname == "-cx")
-			return std::make_unique<compress_integer_qmx_original>();
+			return new compress_integer_qmx_original;
 		if (shortname == "-cX")
-			return std::make_unique<compress_integer_qmx_improved>();
+			return new compress_integer_qmx_improved;
 		if (shortname == "-cV")
-			return std::make_unique<compress_integer_stream_vbyte>();
+			return new compress_integer_stream_vbyte;
 		if (shortname == "-cv")
-			return std::make_unique<compress_integer_variable_byte>();
+			return new compress_integer_variable_byte;
 		if (shortname == "-cp")
-			return std::make_unique<compress_integer_simple_9_packed>();
+			return new compress_integer_simple_9_packed;
 		if (shortname == "-ce")
-			return std::make_unique<compress_integer_elias_delta_simd>();
+			return new compress_integer_elias_delta_simd;
 		if (shortname == "-cq")
-			return std::make_unique<compress_integer_simple_16_packed>();
+			return new compress_integer_simple_16_packed;
 		if (shortname == "-cQ")
-			return std::make_unique<compress_integer_simple_8b_packed>();
+			return new compress_integer_simple_8b_packed;
 		if (shortname == "-c32r")
-			return std::make_unique<compress_integer_bitpack_32_reduced>();
+			return new compress_integer_bitpack_32_reduced;
 		if (shortname == "-cG")
-			return std::make_unique<compress_integer_elias_gamma_bitwise>();
+			return new compress_integer_elias_gamma_bitwise;
 		if (shortname == "-cD")
-			return std::make_unique<compress_integer_elias_delta_bitwise>();
+			return new compress_integer_elias_delta_bitwise;
 
 		assert(0);	// Unknown compressor;
 		return nullptr;

@@ -40,12 +40,10 @@
 #include "parser_fasta.h"
 #include "channel_file.h"
 #include "channel_trec.h"
-#include "query_bucket.h"
 #include "dynamic_array.h"
 #include "allocator_cpp.h"
 #include "instream_file.h"
 #include "index_manager.h"
-#include "query_maxblock.h"
 #include "allocator_pool.h"
 #include "index_postings.h"
 #include "accumulator_2d.h"
@@ -61,8 +59,6 @@
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
 #include "parser_unicoil_json.h"
-#include "query_maxblock_heap.h"
-#include "accumulator_counter.h"
 #include "compress_integer_all.h"
 #include "evaluate_buying_power.h"
 #include "compress_integer_none.h"
@@ -98,7 +94,6 @@
 #include "evaluate_rank_biased_precision.h"
 #include "compress_integer_variable_byte.h"
 #include "instream_document_unicoil_json.h"
-#include "accumulator_counter_interleaved.h"
 #include "evaluate_mean_reciprocal_rank4k.h"
 #include "evaluate_expected_search_length.h"
 #include "compress_integer_simple_9_packed.h"
@@ -205,12 +200,6 @@ int main(void)
 			puts("Cannot test as no BMI1 instructions on this CPU");
 // LCOV_EXCL_STOP
 			}
-
-		puts("accumulator_counter");
-		JASS::accumulator_counter<uint32_t, 1, 8>::unittest();
-
-		puts("accumulator_counter_interleaved");
-		JASS::accumulator_counter_interleaved<uint32_t, 1, 8>::unittest();
 
 		puts("stem_porter");
 		JASS::stem_porter::unittest();
@@ -487,15 +476,6 @@ int main(void)
 		puts("query_heap");
 		JASS::query_heap::unittest();
 
-		puts("query_maxblock");
-		JASS::query_maxblock::unittest();
-
-		puts("query_maxblock_heap");
-		JASS::query_maxblock_heap::unittest();
-
-		puts("query_bucket");
-		JASS::query_bucket::unittest();
-
 		puts("run_export_trec");
 		JASS::run_export_trec::unittest();
 
@@ -522,7 +502,7 @@ int main(void)
 		}
 	catch (...)
 		{
-		printf("CAUGHT AN EXCEPTION OF UNKNOEN TYPE)\n");
+		printf("CAUGHT AN EXCEPTION OF UNKNOWN TYPE)\n");
 		}
 	// LCOV_EXCL_STOP
 
