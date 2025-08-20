@@ -506,7 +506,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
 			}
 
-		local.jass_query->rewind(smallest_possible_rsv, largest_possible_rsv);
+		local.jass_query->rewind(smallest_possible_rsv, 1, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*
