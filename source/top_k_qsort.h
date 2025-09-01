@@ -94,7 +94,7 @@ namespace JASS
 				if (n < 7)
 					{ /* Insertion sort on smallest arrays */
 					for (pm = a + 1; pm < a + n; pm++)
-						for (pl = pm; pl > a && *(pl - 1) > *pl; pl--)
+						for (pl = pm; pl > a && *(pl - 1) < *pl; pl--)
 							std::swap(*pl, *(pl - 1));
 					return;
 					}
@@ -119,7 +119,7 @@ namespace JASS
 				pc = pd = a + (n - 1);
 				for (;;)
 					{
-					while (pb <= pc && *pb <= pv)
+					while (pb <= pc && *pb >= pv)
 						{
 						if (*pb == pv)
 							{
@@ -128,7 +128,7 @@ namespace JASS
 							}
 						pb++;
 						}
-					while (pc >= pb && *pc >= pv)
+					while (pc >= pb && *pc <= pv)
 						{
 						if (*pc == pv)
 							{
