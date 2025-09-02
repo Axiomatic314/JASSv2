@@ -101,7 +101,7 @@ namespace JASS
 			*/
 			virtual docid_rsv_pair *get_first(void)
 				{
-				next_result_location = needed_for_top_k;
+				next_result_location = 0;
 				sort();
 				return get_next();
 				}
@@ -116,10 +116,10 @@ namespace JASS
 			*/
 			virtual docid_rsv_pair *get_next(void)
 				{
-				if (next_result_location == top_k)
+				if (next_result_location >= top_k - needed_for_top_k)
 					return NULL;
 
-				size_t id = accumulators.get_index(accumulator_pointers[next_result_location].pointer());
+				size_t id = accumulators.get_index(accumulator_pointers[top_k - next_result_location - 1].pointer());
 				next_result.document_id = id;
 				next_result.primary_key = &((*primary_keys)[id]);
 				next_result.rsv = accumulators.get_value(id);
@@ -321,7 +321,7 @@ namespace JASS
 
 				for (docid_rsv_pair *rsv = query_object->get_first(); rsv != NULL; rsv = query_object->get_next())
 					string << "<" << rsv->document_id << "," << (uint32_t)rsv->rsv << ">";
-				JASS_assert(string.str() == "<1,15><3,20>");
+				JASS_assert(string.str() == "<3,20><1,15>");
 
 				/*
 					Check the parser
