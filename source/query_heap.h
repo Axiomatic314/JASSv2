@@ -101,8 +101,8 @@ namespace JASS
 			*/
 			virtual docid_rsv_pair *get_first(void)
 				{
-				next_result_location = 0;
 				sort();
+				next_result_location = 0;
 				return get_next();
 				}
 
@@ -268,31 +268,6 @@ namespace JASS
 						{
 						break;
 						}
-				}
-
-			/*
-				QUERY_HEAP::DECODE_WITH_WRITER()
-				--------------------------------
-			*/
-			/*!
-				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
-				@details Typically used to export an index, not used to process queries.
-				@param integers [in] The number of integers that are compressed.
-				@param compressed [in] The compressed sequence.
-				@param compressed_size [in] The length of the compressed sequence.
-			*/
-			virtual void decode_with_writer(query::printer &writer, size_t integers, const void *compressed, size_t compressed_size)
-				{
-				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
-				codex.decode(buffer, integers, compressed, compressed_size);
-
-				DOCID_TYPE id = 0;
-				DOCID_TYPE *end = buffer + integers;
-				for (auto *current = buffer; current < end; current++)
-					{
-					id += *current;
-					writer.add_rsv(id, impact);
-					}
 				}
 
 			/*

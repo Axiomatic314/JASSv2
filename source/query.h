@@ -230,8 +230,8 @@ namespace JASS
 			virtual void sort(void) = 0;
 
 			/*
-				QUERY_HEAP::DECODE_AND_PROCESS()
-				--------------------------------
+				QUERY::DECODE_AND_PROCESS()
+				---------------------------
 			*/
 			/*!
 				@brief Given the integer decoder, the number of integes to decode, and the compressed sequence, decompress (but do not process).
@@ -269,6 +269,19 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode_with_writer(query::printer &writer, size_t integers, const void *compressed, size_t compressed_size) = 0;
+			virtual void decode_with_writer(query::printer &writer, size_t integers, const void *compressed, size_t compressed_size)
+				{
+				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				codex.decode(buffer, integers, compressed, compressed_size);
+
+				DOCID_TYPE id = 0;
+				DOCID_TYPE *end = buffer + integers;
+				for (auto *current = buffer; current < end; current++)
+					{
+					id += *current;
+					writer.add_rsv(id, impact);
+					}
+				}
+
 		};
 	}

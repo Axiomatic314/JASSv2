@@ -6,14 +6,17 @@
 */
 #include "timer.h"
 #include "threads.h"
+#include "query_heap.h"
 #include "run_export.h"
 #include "top_k_limit.h"
+#include "query_simple.h"
 #include "parser_query.h"
 #include "JASS_anytime_api.h"
 #include "JASS_anytime_query.h"
 #include "JASS_anytime_stats.h"
 #include "deserialised_jass_v2.h"
 #include "JASS_anytime_thread_result.h"
+#include "JASS_anytime_accumulator_manager.h"
 
 /*
 	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
@@ -37,6 +40,7 @@ JASS_anytime_api::JASS_anytime_api()
 	which_query_parser = JASS::parser_query::parser_type::query;
 	accumulator_width = 0;
 	stats.threads = 1;
+	accumulator_manager = "2d_heap";
 	}
 
 /*
@@ -72,7 +76,8 @@ JASS_anytime_api::thread_data &JASS_anytime_api::get_thread_local_data(size_t th
 		/*
 			Allocate a JASS query object
 		*/
-		initial.jass_query = new JASS::query_heap(*index->codex(codex_name, d_ness));
+		JASS::compress_integer &codex = *index->codex(codex_name, d_ness);
+		initial.jass_query = JASS_anytime_accumulator_manager::get_by_name(accumulator_manager, codex);
 		initial.jass_query->init(index->primary_keys(), index->document_count(), (JASS::query::DOCID_TYPE)top_k, accumulator_width);
 		}
 

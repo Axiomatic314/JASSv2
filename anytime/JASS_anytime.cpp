@@ -20,28 +20,32 @@
 	PARAMETERS
 	----------
 */
-static double rho = 100.0;											///< In the anytime paper rho is the percentage of the collection that should be used as a cap to the number of postings processed.
+static double rho = 100.0;													///< In the anytime paper rho is the percentage of the collection that should be used as a cap to the number of postings processed.
 static size_t maximum_number_of_postings_to_process = 0;			///< Computed from rho
 static std::string parameter_queryfilename;							///< Name of file containing the queries
-static size_t parameter_threads = 1;								///< Number of concurrent queries
-static size_t parameter_top_k = 10;									///< Number of results to return
-static size_t accumulator_width = 0;								///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
+static size_t parameter_threads = 1;									///< Number of concurrent queries
+static size_t parameter_top_k = 10;										///< Number of results to return
+static size_t accumulator_width = 0;									///< The width (2^accumulator_width) of the accumulator 2-D array (if they are being used).
 static bool parameter_ascii_query_parser = false;					///< When true use the ASCII pre-casefolded query parser
-static bool parameter_help = false;									///< Print the usage information
+static bool parameter_help = false;										///< Print the usage information
 static bool parameter_index_v2 = false;								///< The index is a JASS version 2 index
+std::string parameter_accumulator_manager = "2d_heap";	///< Which accumulator manager to use
 
-static std::string parameters_errors;								///< Any errors as a result of command line parsing
-static auto parameters = std::make_tuple							///< The  command line parameter block
+static std::string parameters_errors;									///< Any errors as a result of command line parsing
+static auto parameters = std::make_tuple								///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?",   "--help",         "                  Print this help.", parameter_help),
-	JASS::commandline::parameter("-2",   "--v2_index",     "                  The index is a JASS v2 index", parameter_index_v2),
-	JASS::commandline::parameter("-a",   "--asciiparser",  "                  Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
-	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>           Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
-	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>        Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent> Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
-	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>     Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
-	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>     Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
-	JASS::commandline::parameter("-w",   "--width",        "<2^w>             The width of the 2D accumulator array (2^w is used)", accumulator_width)
+	JASS::commandline::parameter("-?",   "--help",         "                   Print this help.", parameter_help),
+	JASS::commandline::parameter("-h",   "--help",         "                   Print this help.", parameter_help),
+	JASS::commandline::parameter("-2",   "--v2_index",     "                   The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-I2",  "--v2_index",     "                   The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-a",   "--asciiparser",  "                   Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
+	JASS::commandline::parameter("-A",   "--accumulators", "<2d_heap | simple> Which accumulator manager to use [default = 2d_heap]", parameter_accumulator_manager),
+	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>            Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
+	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>         Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent>  Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
+	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>      Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
+	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>      Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-w",   "--width",        "<2^w>              The width of the 2D accumulator array (2^w is used)", accumulator_width)
 	);
 
 /*
@@ -141,6 +145,11 @@ static int main_event(int argc, const char *argv[])
 		exit(usage(argv[0]));
 
 	stats.threads = parameter_threads;
+
+	/*
+		Set the accumulator manager
+	*/
+	engine.set_accumulator_manager(parameter_accumulator_manager);
 
 	/*
 		Set the top-k value

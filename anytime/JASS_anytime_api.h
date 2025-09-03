@@ -13,7 +13,6 @@
 #pragma once
 
 #include "query.h"
-#include "query_heap.h"
 #include "top_k_limit.h"
 #include "parser_query.h"
 #include "JASS_anytime_query.h"
@@ -75,6 +74,7 @@ class JASS_anytime_api
 		size_t accumulator_width;										///< Width of the accumulator array
 		JASS_anytime_stats stats;										///< Stats for this "session"
 		std::map<size_t, thread_data> thread_local_data;		///< Data needed by each thread (the accumulators array, etc)
+		std::string accumulator_manager;								///< The name of the accumulator manager
 
 	private:
 		/*
@@ -203,6 +203,18 @@ class JASS_anytime_api
 		*/
 		int32_t get_encoding_scheme_d(void);
 
+		/*
+			JASS_ANYTIME_API::SET_ACCUMULATOR_MANAGER()
+			-------------------------------------------
+		*/
+		/*!
+			@brief Set the name of the accumulator manager to use
+			@param [in] name The name of the manager to use
+		*/
+		void set_accumulator_manager(const std::string &name)
+			{
+			accumulator_manager = name;
+			}
 
 		/*
 			JASS_ANYTIME_API::SET_POSTINGS_TO_PROCESS_PROPORTION()

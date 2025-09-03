@@ -35,6 +35,7 @@
 #include "pointer_box.h"
 #include "evaluate_map.h"
 #include "serialise_ci.h"
+#include "query_simple.h"
 #include "hash_pearson.h"
 #include "parser_query.h"
 #include "parser_fasta.h"
@@ -475,6 +476,9 @@ int main(void)
 
 		puts("query_heap");
 		JASS::query_heap::unittest();
+
+		puts("query_simple");
+		JASS::query_simple::unittest();
 
 		puts("run_export_trec");
 		JASS::run_export_trec::unittest();

@@ -19,6 +19,7 @@ set(JASS_ANYTIME_FILES
 	JASS_anytime.cpp
 	JASS_anytime_api.h
 	JASS_anytime_api.cpp
+	JASS_anytime_accumulator_manager.h
 	JASS_anytime_query.h
 	JASS_anytime_result.h
 	JASS_anytime_stats.h

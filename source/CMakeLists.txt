@@ -186,6 +186,7 @@ set(JASSlib_FILES
 	quantize_none.h
 	query.h
 	query_heap.h
+	query_simple.h
 	query_term.h
 	query_term_list.h
 	ranking_function.h
