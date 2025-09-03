@@ -37,7 +37,6 @@ namespace JASS
 
 		private:
 			ACCUMULATOR_ARRAY accumulators;											///< The accumulators, one per document in the collection
-//			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];				///< Array of pointers to the top k accumulators
