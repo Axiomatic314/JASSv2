@@ -40,7 +40,7 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_simple(codex);
 		else
 			{
-			std::cout << "ACCUMULATOR MANAGER IS UNKNONW! USING 2d_heap\n";
+			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";
 			return new JASS::query_heap(codex);
 			}
 		}
