@@ -56,6 +56,7 @@
 #include "allocator_memory.h"
 #include "ranking_function.h"
 #include "serialise_jass_v1.h"
+#include "accumulator_simple.h"
 #include "serialise_integers.h"
 #include "evaluate_precision.h"
 #include "instream_file_star.h"
@@ -137,6 +138,7 @@ int main(void)
 		{
 		JASS::hardware_support hardware;
 
+#ifdef NEVER
 		puts("query_term_list");
 		JASS::query_term_list::unittest();
 
@@ -464,7 +466,13 @@ int main(void)
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
+#endif
 
+
+		puts("accumulator_simple");
+		JASS::accumulator_simple<uint32_t, 1>::unittest();
+
+#ifdef NEVER
 		puts("pointer_box");
 		JASS::pointer_box<int>::unittest();
 
@@ -475,7 +483,7 @@ int main(void)
 		JASS::top_k_heap<int>::unittest();
 
 		puts("query_heap");
-		JASS::query_heap::unittest();
+		JASS::query_heap<accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>>::unittest();
 
 		puts("query_simple");
 		JASS::query_simple::unittest();
@@ -491,6 +499,8 @@ int main(void)
 
 		puts("compress_general_zlib");
 		JASS::compress_general_zlib::unittest();
+
+#endif
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

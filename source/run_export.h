@@ -83,7 +83,7 @@ namespace JASS
 				std::vector<uint32_t>integer_sequence = {1, 1, 1, 1, 1, 1};
 				std::vector<std::string>primary_keys = {"zero", "one", "two", "three", "four", "five", "six"};
 				compress_integer_none codex;
-				query_heap *identity = new query_heap(codex);
+				query *identity = new query_heap<JASS::accumulator_2d<query::ACCUMULATOR_TYPE, query::MAX_DOCUMENTS>>(codex);
 				identity->init(primary_keys, 10, 10);
 				std::ostringstream result;
 

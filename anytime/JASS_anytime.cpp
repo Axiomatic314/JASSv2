@@ -34,18 +34,18 @@ std::string parameter_accumulator_manager = "2d_heap";	///< Which accumulator ma
 static std::string parameters_errors;									///< Any errors as a result of command line parsing
 static auto parameters = std::make_tuple								///< The  command line parameter block
 	(
-	JASS::commandline::parameter("-?",   "--help",         "                   Print this help.", parameter_help),
-	JASS::commandline::parameter("-h",   "--help",         "                   Print this help.", parameter_help),
-	JASS::commandline::parameter("-2",   "--v2_index",     "                   The index is a JASS v2 index", parameter_index_v2),
-	JASS::commandline::parameter("-I2",  "--v2_index",     "                   The index is a JASS v2 index", parameter_index_v2),
-	JASS::commandline::parameter("-a",   "--asciiparser",  "                   Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
-	JASS::commandline::parameter("-A",   "--accumulators", "<2d_heap | simple> Which accumulator manager to use [default = 2d_heap]", parameter_accumulator_manager),
-	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>            Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
-	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>         Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
-	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent>  Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
-	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>      Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
-	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>      Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
-	JASS::commandline::parameter("-w",   "--width",        "<2^w>              The width of the 2D accumulator array (2^w is used)", accumulator_width)
+	JASS::commandline::parameter("-?",   "--help",         "                         Print this help.", parameter_help),
+	JASS::commandline::parameter("-h",   "--help",         "                         Print this help.", parameter_help),
+	JASS::commandline::parameter("-2",   "--v2_index",     "                         The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-I2",  "--v2_index",     "                         The index is a JASS v2 index", parameter_index_v2),
+	JASS::commandline::parameter("-a",   "--asciiparser",  "                         Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
+	JASS::commandline::parameter("-A",   "--accumulators", "<2d_heap|1d_heap|simple> Which accumulator manager to use [default = 2d_heap]", parameter_accumulator_manager),
+	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>                  Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
+	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>               Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent>        Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
+	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>            Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
+	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>            Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
+	JASS::commandline::parameter("-w",   "--width",        "<2^w>                    The width of the 2D accumulator array (2^w is used)", accumulator_width)
 	);
 
 /*

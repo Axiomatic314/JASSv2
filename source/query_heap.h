@@ -8,7 +8,7 @@
 	@file
 	@brief Everything necessary to process a query using a heap to store the top-k.
 	@author Andrew Trotman
-	@copyright 2017 Andrew Trotman
+	@copyright 2021 Andrew Trotman
 */
 #pragma once
 
@@ -29,13 +29,15 @@ namespace JASS
 	/*!
 		@brief Everything necessary to process a query (using a heap) is encapsulated in an object of this type
 	*/
+	template <typename ACCUMULATOR_ARRAY>
 	class query_heap : public query
 		{
 		private:
 			typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
 
 		private:
-			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
+			ACCUMULATOR_ARRAY accumulators;											///< The accumulators, one per document in the collection
+//			accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS> accumulators;	///< The accumulators, one per document in the collection
 			DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
 			ACCUMULATOR_TYPE zero;														///< Constant zero used for pointer dereferenced comparisons
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];				///< Array of pointers to the top k accumulators

@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 			
 			JASS::string query(memory);					// allocate a string to read into
 
-			auto jass_query_memory = std::make_shared<JASS::query_heap>(*new JASS::compress_integer_qmx_jass_v1);	// allocate a JASS query object
+			auto jass_query_memory = std::make_shared<JASS::query_simple>(* new JASS::compress_integer_qmx_jass_v1);	// allocate a JASS query object
 			jass_query_memory->init(primary_key, 1024, 10);
 			auto &jass_query = *jass_query_memory.get();		// pretend its an object
 

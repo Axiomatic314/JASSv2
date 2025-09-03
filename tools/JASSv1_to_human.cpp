@@ -260,7 +260,7 @@ int main(int argc, const char *argv[])
 		std::string codex_name;
 		int32_t d_ness;
 		JASS::compress_integer *decompressor = index->codex(codex_name, d_ness);
-		JASS::query_heap processor(*decompressor);
+		JASS::query_heap<JASS::accumulator_2d<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>> processor(*decompressor);
 		processor.init(index->primary_keys(), index->document_count());
 
 		if (!parameter_look_like_atire)

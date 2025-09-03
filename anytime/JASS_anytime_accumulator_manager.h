@@ -16,7 +16,9 @@
 
 #include "query_heap.h"
 #include "query_simple.h"
+#include "accumulator_2d.h"
 #include "compress_integer.h"
+#include "accumulator_simple.h"
 
 namespace JASS_anytime_accumulator_manager
 	{
@@ -35,13 +37,15 @@ namespace JASS_anytime_accumulator_manager
 		std::cout << "ACCUMULATOR MANAGER:" << name << "\n";
 
 		if (name == "2d_heap")
-			return new JASS::query_heap(codex);
+			return new JASS::query_heap<JASS::accumulator_2d<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
+		else if (name == "1d_heap")
+			return new JASS::query_heap<JASS::accumulator_simple<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
 		else if (name == "simple")
 			return new JASS::query_simple(codex);
 		else
 			{
 			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";
-			return new JASS::query_heap(codex);
+			return new JASS::query_heap<JASS::accumulator_2d<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
 			}
 		}
 	}

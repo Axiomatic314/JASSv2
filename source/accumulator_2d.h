@@ -57,65 +57,18 @@ namespace JASS
 			typedef uint8_t flag_type;
 
 		private:
-			/*
-				This class is templated so as to put the array and the dirty flags in-object rather than pointers.  So, its necessary
-				to work out the maxumum sizes of the two arrays at compile time and the check at construction that no overflow
-				is happening. This code works out the maximums and allocates the arrays.
-			*/
-		public:
 			static constexpr size_t maximum_number_of_dirty_flags = NUMBER_OF_ACCUMULATORS;
-		private:
 			static constexpr size_t maximum_number_of_accumulators_allocated = NUMBER_OF_ACCUMULATORS + NUMBER_OF_ACCUMULATORS / 2;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
-		public:
+
+		private:
 			alignas(__m512i) flag_type dirty_flag[maximum_number_of_dirty_flags];																							///< The dirty flags are kept as bytes for faster lookup
 			alignas(__m512i) ELEMENT accumulator[maximum_number_of_accumulators_allocated];																				///< The accumulators are kept in an array
 
-			/*
-				At run-time we use these parameters
-			*/
-		public:
 			size_t width;												///< Each dirty flag represents this number of accumulators in a "row"
 			uint32_t shift;											///< The amount to shift to get the right dirty flag
 			size_t number_of_dirty_flags;							///< The number of "rows" (i.e. dirty flags)
 			size_t number_of_accumulators_allocated;			///< The numner of accumulators that were actually allocated (recall that this is a 2D array)
 			size_t number_of_accumulators;						///< The number of accumulators that the user asked for
-
-		private:
-			/*
-				ACCUMULATOR_2D::CLEAN_FLAGSET()
-				-------------------------------
-			*/
-			/*!
-				@brief Clean the flags in the (already shifted) flat set if the given bit in active_set is 1
-				@param dirty_flag_set [in] A set containing a collection of dirty flag indexes
-				@param active_set [in] A bitset stating which elements in dirty_flag_set should be used
-			*/
-			forceinline void clean_flagset(__m128i dirty_flag_set, uint16_t active_set)
-				{
-				uint32_t single_flag;
-				/*
-					At least one of the rows is unclean.  It might be that two bits represent the same row so we must check for
-					that - which mean we can't simply work off of the bit-patterns, we have to also check the dirty flags.
-
-					Somewhat surprisingly, the if-less verison that results in a multiply bu zero is faster than the version
-					that checks with if statements and only calls memset if it has to.
-				*/
-				single_flag = _mm_extract_epi32(dirty_flag_set, 0);
-				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 0) & 0x000F));
-				dirty_flag[single_flag] = 0x00;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 1);
-				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 4) & 0x000F));
-				dirty_flag[single_flag] = 0x00;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 2);
-				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 8) & 0x000F));
-				dirty_flag[single_flag] = 0x00;
-
-				single_flag = _mm_extract_epi32(dirty_flag_set, 3);
-				memset(&accumulator[0] + single_flag * width, 0, width * sizeof(accumulator[0]) * ((active_set >> 12) & 0x000F));
-				dirty_flag[single_flag] = 0x00;
-				}
 
 		public:
 			/*
@@ -246,100 +199,6 @@ namespace JASS
 					}
 
 				return accumulator[which];
-				}
-
-			/*
-				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
-				----------------------------------
-			*/
-			/*!
-				@brief Return the ids of the dirty flags to use.
-				@param element [in] The accumulator numbers.
-				@return The clean flag numbers.
-			*/
-			forceinline __m256i which_dirty_flag(__m256i element) const
-				{
-				return _mm256_srli_epi32(element, shift);
-				}
-
-			/*
-				ACCUMULATOR_2D::OPERATOR[]()
-				----------------------------
-			*/
-			/*!
-				@brief Return a set of acumulators
-				@details The only valid way to access the accumulators is through this interface.
-				It ensures the accumulator has been initialised before the first
-				time it is returned to the caller.
-				@param which [in] The accumulators to return.
-				@return The values of the accumulators.
-			*/
-			forceinline __m256i operator[](__m256i which)
-				{
-				__m256i indexes = which_dirty_flag(which);
-				__m256i flags = simd::gather(&dirty_flag[0], indexes);
-
-				uint32_t got = _mm256_movemask_epi8(flags);
-				if (got == 0)
-					return simd::gather(&accumulator[0], which);
-
-				if (got & 0x0000'FFFF)
-					clean_flagset(_mm256_extracti128_si256(indexes, 0), got >> 0);
-				if (got & 0xFFFF'0000)
-					clean_flagset(_mm256_extracti128_si256(indexes, 1), got >> 16);
-
-				return simd::gather(&accumulator[0], which);
-				}
-
-			/*
-				ACCUMULATOR_2D::WHICH_DIRTY_FLAG()
-				----------------------------------
-			*/
-			/*!
-				@brief Return the ids of the dirty flags to use.
-				@param element [in] The accumulator numbers.
-				@return The clean flag numbers.
-			*/
-			forceinline __m512i which_dirty_flag(__m512i element) const
-				{
-				return _mm512_srli_epi32(element, shift);
-				}
-
-			/*
-				ACCUMULATOR_2D::OPERATOR[]()
-				----------------------------
-			*/
-			/*!
-				@brief Return a set of acumulators
-				@details The only valid way to access the accumulators is through this interface.
-				It ensures the accumulator has been initialised before the first
-				time it is returned to the caller.
-				@param which [in] The accumulators to return.
-				@return The values of the accumulators.
-			*/
-			forceinline __m512i operator[](__m512i which)
-				{
-				__m512i indexes = which_dirty_flag(which);
-				__m512i flags = simd::gather(&dirty_flag[0], indexes);
-
-				__mmask64 got = _mm512_movepi8_mask(flags);
-
-				if (got == 0)
-					return simd::gather(&accumulator[0], which);			// no new flags to set
-
-				/*
-					At least one bit is set, work out which ones need processing and process them.
-				*/
-				if (got & 0x0000'0000'0000'FFFF)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 0), got >> 0);
-				if (got & 0x0000'0000'FFFF'0000)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 1), got >> 16);
-				if (got & 0x0000'FFFF'0000'0000)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 2), got >> 32);
-				if (got & 0xFFFF'0000'0000'0000)
-					clean_flagset(_mm512_extracti32x4_epi32(indexes, 3), got >> 48);
-
-				return simd::gather(&accumulator[0], which);
 				}
 
 			/*

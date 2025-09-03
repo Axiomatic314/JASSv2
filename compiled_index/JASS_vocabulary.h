@@ -17,6 +17,8 @@
 
 #include "slice.h"
 #include "query.h"
+#include "query_simple.h"
+
 /*
 	CLASS JASS_CI_VOCAB
 	-------------------
@@ -27,15 +29,15 @@
 class JASS_ci_vocab
 	{
 	public:
-		const char *term;							///< The search engine vocabulary term
-		void (*method)(JASS::query_heap &q);				///< The method to call when that term is seen in the query
+		const char *term;									///< The search engine vocabulary term
+		void (*method)(JASS::query_simple &q);		///< The method to call when that term is seen in the query
 
 	public:
 		/*
 			JASS_CI_VOCAB::JASS_CI_VOCAB()
 			------------------------------
 		*/
-		JASS_ci_vocab(const char *term, void (*method)(JASS::query_heap &q)) :
+		JASS_ci_vocab(const char *term, void (*method)(JASS::query_simple &q)) :
 			term(term),
 			method(method)
 			{

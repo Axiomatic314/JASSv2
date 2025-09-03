@@ -12,6 +12,7 @@
 */
 #pragma once
 
+#include "simd.h"
 #include "query.h"
 #include "pointer_box.h"
 #include "top_k_qsort.h"
@@ -31,9 +32,9 @@ namespace JASS
 		private:
 
 		private:
-			ACCUMULATOR_TYPE accumulators[MAX_DOCUMENTS];						///< The accumulators, one per document in the collection
-			ACCUMULATOR_TYPE *accumulator_pointers[MAX_DOCUMENTS];			///< Array of pointers to the accumulators
-			bool sorted;																	///< has heap and accumulator_pointers been sorted (false after rewind() true after sort())
+			ACCUMULATOR_TYPE accumulator[MAX_DOCUMENTS];							///< The accumulators, one per document in the collection
+			ACCUMULATOR_TYPE *accumulator_pointer[MAX_DOCUMENTS];				///< Array of pointers to the accumulators
+			bool sorted;																	///< Has accumulator_pointer been sorted (false after rewind() true after sort())
 			docid_rsv_pair next_result;												///< A single result, used but get_first() and get_next()
 			DOCID_TYPE next_result_location;											///< Used by get_first() and get_next() to determine which result is next
 
@@ -79,7 +80,7 @@ namespace JASS
 				query::init(primary_keys, documents, top_k);
 
 				for (DOCID_TYPE which = 0; which < documents; which++)
-					accumulator_pointers[which] = &accumulators[which];
+					accumulator_pointer[which] = &accumulator[which];
 				}
 
 			/*
@@ -110,10 +111,10 @@ namespace JASS
 				if (next_result_location >= top_k)
 					return NULL;
 
-				size_t id = accumulator_pointers[next_result_location] - accumulators;
+				size_t id = accumulator_pointer[next_result_location] - accumulator;
 				next_result.document_id = id;
 				next_result.primary_key = &((*primary_keys)[id]);
-				next_result.rsv = accumulators[id];
+				next_result.rsv = accumulator[id];
 
 				next_result_location++;
 
@@ -131,7 +132,7 @@ namespace JASS
 				{
 				sorted = false;
 				query::rewind(largest_possible_rsv);
-				memset(accumulators, 0, documents);
+				::memset(accumulator, 0, documents * sizeof(*accumulator));
 				}
 
 			/*
@@ -144,7 +145,7 @@ namespace JASS
 			virtual void sort(void)
 				{
 				if (!sorted)
-					std::partial_sort(accumulator_pointers, accumulator_pointers + top_k, accumulator_pointers + documents,
+					std::partial_sort(accumulator_pointer, accumulator_pointer + top_k, accumulator_pointer + documents,
 						[](ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) -> bool
 						{
 						if (*a > *b)
@@ -168,7 +169,7 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-				accumulators[document_id] += score;
+				accumulator[document_id] += score;
 				}
 
 			/*
