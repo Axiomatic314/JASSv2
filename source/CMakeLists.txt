@@ -10,6 +10,7 @@
 
 set(JASSlib_FILES
 	accumulator_2d.h
+	accumulator_block_max.h
 	accumulator_simple.h
 	allocator.h
 	allocator_cpp.h
@@ -186,6 +187,7 @@ set(JASSlib_FILES
 	quantize.h
 	quantize_none.h
 	query.h
+	query_block_max.h
 	query_heap.h
 	query_simple.h
 	query_term.h

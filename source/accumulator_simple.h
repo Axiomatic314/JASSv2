@@ -38,7 +38,7 @@ namespace JASS
 		@brief Store the accumulators in an array.
 		@tparam ELEMENT The type of accumulator being used (default is uint16_t)
 		@tparam NUMBER_OF_ACCUMULATORS The maxium number of documents allowed in any index
-*/
+	*/
 	template <typename ELEMENT, size_t NUMBER_OF_ACCUMULATORS, typename = typename std::enable_if<std::is_arithmetic<ELEMENT>::value, ELEMENT>::type>
 	class accumulator_simple
 		{
@@ -74,6 +74,7 @@ namespace JASS
 			*/
 			virtual ~accumulator_simple()
 				{
+				/* Nothing */
 				}
 
 			/*

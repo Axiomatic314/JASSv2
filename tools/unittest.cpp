@@ -52,6 +52,7 @@
 #include "instream_memory.h"
 #include "run_export_trec.h"
 #include "evaluate_recall.h"
+#include "query_block_max.h"
 #include "hardware_support.h"
 #include "allocator_memory.h"
 #include "ranking_function.h"
@@ -66,6 +67,7 @@
 #include "compress_integer_none.h"
 #include "index_postings_impact.h"
 #include "compress_general_zlib.h"
+#include "accumulator_block_max.h"
 #include "instream_document_trec.h"
 #include "instream_document_warc.h"
 #include "evaluate_selling_power.h"
@@ -138,7 +140,6 @@ int main(void)
 		{
 		JASS::hardware_support hardware;
 
-#ifdef NEVER
 		puts("query_term_list");
 		JASS::query_term_list::unittest();
 
@@ -466,13 +467,13 @@ int main(void)
 
 		puts("accumulator_2d");
 		JASS::accumulator_2d<uint32_t, 1>::unittest();
-#endif
-
 
 		puts("accumulator_simple");
 		JASS::accumulator_simple<uint32_t, 1>::unittest();
 
-#ifdef NEVER
+		puts("accumulator_block_max");
+		JASS::accumulator_block_max<uint32_t, 1>::unittest();
+
 		puts("pointer_box");
 		JASS::pointer_box<int>::unittest();
 
@@ -483,7 +484,7 @@ int main(void)
 		JASS::top_k_heap<int>::unittest();
 
 		puts("query_heap");
-		JASS::query_heap<accumulator_2d<ACCUMULATOR_TYPE, MAX_DOCUMENTS>>::unittest();
+		JASS::query_heap<JASS::accumulator_2d<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>::unittest();
 
 		puts("query_simple");
 		JASS::query_simple::unittest();
@@ -499,8 +500,6 @@ int main(void)
 
 		puts("compress_general_zlib");
 		JASS::compress_general_zlib::unittest();
-
-#endif
 
 		puts("ALL UNIT TESTS HAVE PASSED");
 		failed = false;

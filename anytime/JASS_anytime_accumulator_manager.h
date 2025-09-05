@@ -17,6 +17,7 @@
 #include "query_heap.h"
 #include "query_simple.h"
 #include "accumulator_2d.h"
+#include "query_block_max.h"
 #include "compress_integer.h"
 #include "accumulator_simple.h"
 
@@ -42,6 +43,8 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_heap<JASS::accumulator_simple<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
 		else if (name == "simple")
 			return new JASS::query_simple(codex);
+		else if (name == "blockmax")
+			return new JASS::query_block_max(codex);
 		else
 			{
 			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";
