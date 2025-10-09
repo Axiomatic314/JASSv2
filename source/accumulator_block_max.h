@@ -71,8 +71,8 @@ namespace JASS
 				@brief Constructor.
 			*/
 			accumulator_block_max() :
-				width(1),
 				shift(1),
+				width(1),
 				number_of_blocks(0),
 				number_of_accumulators_allocated(0),
 				number_of_accumulators(0)
