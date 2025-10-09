@@ -19,9 +19,15 @@
 #include "accumulator_2d.h"
 #include "exception_done.h"
 #include "compress_integer_variable_byte.h"
+#include "timer.h"
+#include "query_heap_timer.h"
 
 namespace JASS
 	{
+	query_heap_timer time_rewind("Rewind");
+	query_heap_timer time_add_rsv("Add");
+	query_heap_timer time_decompress("Decompression");
+	
 	/*
 		CLASS QUERY_HEAP
 		----------------
@@ -142,7 +148,9 @@ namespace JASS
 				sorted = false;
 				zero = 0;
 				accumulator_pointers[0] = &zero;
+				auto time_taken = timer::start();
 				accumulators.rewind();
+				time_rewind.add_time(timer::stop(time_taken).nanoseconds());
 				needed_for_top_k = this->top_k;
 				this->top_k_lower_bound = top_k_lower_bound;
 				query::rewind(largest_possible_rsv);
@@ -243,18 +251,21 @@ namespace JASS
 			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				auto time_taken = timer::start();
 				codex.decode(buffer, integers, compressed, compressed_size);
 
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
+				time_decompress.add_time(timer::stop(time_taken).nanoseconds());
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
 				const DOCID_TYPE *end = buffer + integers;
+				time_taken = timer::start();
 #if defined(__clang__)
 				#pragma unroll 8
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -269,6 +280,8 @@ namespace JASS
 						{
 						break;
 						}
+				
+				time_add_rsv.add_time(timer::stop(time_taken).nanoseconds());
 				}
 
 			/*

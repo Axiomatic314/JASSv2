@@ -188,6 +188,7 @@ set(JASSlib_FILES
 	quantize_none.h
 	query.h
 	query_block_max.h
+	query_heap_timer.h
 	query_heap.h
 	query_simple.h
 	query_term.h
