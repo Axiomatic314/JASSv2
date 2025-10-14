@@ -20,14 +20,16 @@
 #include "exception_done.h"
 #include "compress_integer_variable_byte.h"
 #include "timer.h"
-#include "query_heap_timer.h"
+#include "query_timer.h"
 
 namespace JASS
 	{
-	query_heap_timer time_rewind("Rewind");
-	query_heap_timer time_add_rsv("Add");
-	query_heap_timer time_decompress("Decompression");
-	
+	extern query_timer time_rewind;
+    extern query_timer time_add_rsv;
+    extern query_timer time_decompress;
+    extern query_timer time_init;
+	extern query_timer time_sort;
+
 	/*
 		CLASS QUERY_HEAP
 		----------------
@@ -94,7 +96,9 @@ namespace JASS
 			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
+				auto time_taken = timer::start();
 				accumulators.init(documents, width);
+				time_init.add_time(timer::stop(time_taken).microseconds());
 				top_results.set_top_k(top_k);
 				}
 
@@ -150,7 +154,7 @@ namespace JASS
 				accumulator_pointers[0] = &zero;
 				auto time_taken = timer::start();
 				accumulators.rewind();
-				time_rewind.add_time(timer::stop(time_taken).nanoseconds());
+				time_rewind.add_time(timer::stop(time_taken).microseconds());
 				needed_for_top_k = this->top_k;
 				this->top_k_lower_bound = top_k_lower_bound;
 				query::rewind(largest_possible_rsv);
@@ -165,12 +169,14 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
+				auto time_taken = timer::start();
 				if (!sorted)
 					{
-//					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k);
+//					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k)
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 					sorted = true;
 					}
+				time_sort.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -258,7 +264,7 @@ namespace JASS
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
-				time_decompress.add_time(timer::stop(time_taken).nanoseconds());
+				time_decompress.add_time(timer::stop(time_taken).microseconds());
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
@@ -281,7 +287,7 @@ namespace JASS
 						break;
 						}
 				
-				time_add_rsv.add_time(timer::stop(time_taken).nanoseconds());
+				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*

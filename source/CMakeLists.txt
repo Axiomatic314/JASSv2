@@ -188,11 +188,12 @@ set(JASSlib_FILES
 	quantize_none.h
 	query.h
 	query_block_max.h
-	query_heap_timer.h
 	query_heap.h
 	query_simple.h
 	query_term.h
 	query_term_list.h
+	query_timer.h
+	query_timer.cpp
 	ranking_function.h
 	ranking_function_atire_bm25.h
 	ranking_function_none.h

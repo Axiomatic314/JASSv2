@@ -8,19 +8,19 @@
 
 namespace JASS
 {
-    class query_heap_timer
+    class query_timer
     {
         public:
             size_t time;
             std::string name;
         public:
-            query_heap_timer(std::string name): 
+            query_timer(std::string name): 
                 time(0), 
                 name(name)
                 {
                 }
 
-            ~query_heap_timer()
+            ~query_timer()
                 {
                 std::cout << name << " Time:" << time << " ns\n";
                 }
@@ -35,4 +35,5 @@ namespace JASS
                 time += val;
                 }
     };
+
 }

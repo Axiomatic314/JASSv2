@@ -17,9 +17,16 @@
 #include "pointer_box.h"
 #include "top_k_qsort.h"
 #include "compress_integer_variable_byte.h"
+#include "timer.h"
+#include "query_timer.h"
 
 namespace JASS
 	{
+	extern query_timer time_rewind;
+    extern query_timer time_add_rsv;
+    extern query_timer time_decompress;
+    extern query_timer time_init;
+	extern query_timer time_sort;
 	/*
 		CLASS QUERY_SIMPLE
 		------------------
@@ -79,8 +86,11 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 
+				auto time_taken = timer::start();
 				for (DOCID_TYPE which = 0; which < documents; which++)
 					accumulator_pointer[which] = &accumulator[which];
+
+				time_init.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -132,7 +142,9 @@ namespace JASS
 				{
 				sorted = false;
 				query::rewind(largest_possible_rsv);
+				auto time_taken = timer::start();
 				::memset(accumulator, 0, documents * sizeof(*accumulator));
+				time_rewind.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -144,6 +156,7 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
+				auto time_taken = timer::start();
 				if (!sorted)
 					std::partial_sort(accumulator_pointer, accumulator_pointer + top_k, accumulator_pointer + documents,
 						[](ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) -> bool
@@ -156,6 +169,7 @@ namespace JASS
 						}
             		);
 				sorted = true;
+				time_sort.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -185,18 +199,21 @@ namespace JASS
 			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				auto time_taken = timer::start();
 				codex.decode(buffer, integers, compressed, compressed_size);
 
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
+				time_decompress.add_time(timer::stop(time_taken).microseconds());
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
 				const DOCID_TYPE *end = buffer + integers;
+				time_taken = timer::start();
 #if defined(__clang__)
 				#pragma unroll 8
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -204,6 +221,8 @@ namespace JASS
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
+				
+				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
