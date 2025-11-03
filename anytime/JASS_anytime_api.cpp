@@ -37,6 +37,7 @@ JASS_anytime_api::JASS_anytime_api()
 	postings_to_process = (std::numeric_limits<size_t>::max)();
 	relative_postings_to_process = 1;
 	top_k = 10;
+	precomputed_minimum_rsv_table = nullptr;
 	which_query_parser = JASS::parser_query::parser_type::query;
 	accumulator_width = 0;
 	stats.threads = 1;
@@ -50,6 +51,7 @@ JASS_anytime_api::JASS_anytime_api()
 JASS_anytime_api::~JASS_anytime_api()
 	{
 	delete index;
+	delete precomputed_minimum_rsv_table;
 	}
 
 /*
@@ -196,6 +198,16 @@ JASS_ERROR JASS_anytime_api::set_top_k(size_t k)
 
 	return JASS_ERROR_OK;
 	}
+
+/*
+	JASS_ANYTIME_API::SET_TOP_K_LIMIT()
+	-----------------------------
+*/
+void JASS_anytime_api::set_top_k_limit(const std::string &filename)
+	{
+	precomputed_minimum_rsv_table = new JASS::top_k_limit(filename);
+	}
+
 
 /*
 	JASS_ANYTIME_API::GET_DOCUMENT_COUNT()
@@ -511,7 +523,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
 			}
 
-		local.jass_query->rewind(smallest_possible_rsv, 1, largest_possible_rsv);
+		// JASS::query::ACCUMULATOR_TYPE rsv_at_k = 1;
+		JASS::query::ACCUMULATOR_TYPE rsv_at_k = precomputed_minimum_rsv_table->empty() ? 1 : precomputed_minimum_rsv_table->operator[](query_id);
+		local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*

@@ -159,6 +159,11 @@ static int main_event(int argc, const char *argv[])
 		std::cout << "The top-k specified (" << parameter_top_k << ") is larger than maximum TOP-K (" << engine.get_max_top_k() << ")\n";
 		return 0;
 		}
+	
+	/*
+		Load the pre-computed rsv score table
+	*/
+	engine.set_top_k_limit();
 
 	/*
 		Set the accumulator width

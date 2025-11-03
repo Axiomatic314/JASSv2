@@ -54,7 +54,7 @@ namespace JASS
 				allowed to enter the heap and so will not be in the results list for the given query.
 				@param filename [in] the name of the file containing the rsv limit for each query
 			*/
-			top_k_limit(std::string &filename);
+			top_k_limit(const std::string &filename);
 
 			/*
 				TOP_K_LIMIT::~TOP_K_LIMIT()

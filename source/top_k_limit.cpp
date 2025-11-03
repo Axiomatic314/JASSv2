@@ -16,7 +16,7 @@ namespace JASS
 		TOP_K_LIMIT::TOP_K_LIMIT()
 		--------------------------
 	*/
-	top_k_limit::top_k_limit(std::string &filename)
+	top_k_limit::top_k_limit(const std::string &filename)
 		{
 		std::string file_contents;
 		std::vector<uint8_t *> line_list;

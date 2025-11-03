@@ -70,6 +70,7 @@ class JASS_anytime_api
 		size_t postings_to_process;									///< The maximunm number of postings to process
 		double relative_postings_to_process;						///< If not 1 then then this is the proportion of this query's postings that should be processed
 		size_t top_k;														///< The number of documents we want in the results list
+		JASS::top_k_limit *precomputed_minimum_rsv_table;			///< The table of minimum rsv values
 		JASS::parser_query::parser_type which_query_parser;	///< Use the simple ASCII parser or the regular query parser
 		size_t accumulator_width;										///< Width of the accumulator array
 		JASS_anytime_stats stats;										///< Stats for this "session"
@@ -294,6 +295,16 @@ class JASS_anytime_api
          @return The current top-k value, the maximum number of documents to put into the results list
 		*/
 		size_t get_top_k(void);
+
+		/*
+			JASS_ANYTIME_API::SET_TOP_K_LIMIT()
+			------------------------------------
+		*/
+		/*!
+		 @brief Set the top_k threshold for each query
+		 @param filename The file containing the <query_id> <rsv> pairs
+		*/
+		void set_top_k_limit(const std::string &filename = "threshold.txt");
 
 		/*
 			JASS_ANYTIME_API::SET_ACCUMULATOR_WIDTH()
