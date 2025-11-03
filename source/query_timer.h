@@ -22,7 +22,7 @@ namespace JASS
 
             ~query_timer()
                 {
-                std::cout << name << " Time:" << time << " ns\n";
+                std::cout << name << " Time:" << time << " us\n";
                 }
 
             void init(void)
