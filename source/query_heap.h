@@ -203,7 +203,7 @@ namespace JASS
 				if (needed_for_top_k > 0)
 					{
 					/*
-						we weren't already in the heap
+						Check if we weren't already in the heap, and if we're not then put us into the array.
 					*/
 					if (*which.pointer() - score < top_k_lower_bound)
 						{
@@ -253,9 +253,11 @@ namespace JASS
 				@param integers [in] The number of integers that are compressed.
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
+				@return 1 for we've computed the correct top-k, 0 for keep going
 			*/
-			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+			virtual bool decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
+				bool answer = 0;
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				auto time_taken = timer::start();
 				codex.decode(buffer, integers, compressed, compressed_size);
@@ -284,10 +286,12 @@ namespace JASS
 						}
 					catch (Done&)
 						{
+						answer = 1;
 						break;
 						}
 				
 				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
+				return answer;
 				}
 
 			/*

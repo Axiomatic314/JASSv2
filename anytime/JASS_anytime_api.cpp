@@ -524,8 +524,15 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			}
 
 		// JASS::query::ACCUMULATOR_TYPE rsv_at_k = 1;
-		JASS::query::ACCUMULATOR_TYPE rsv_at_k = precomputed_minimum_rsv_table->empty() ? 1 : precomputed_minimum_rsv_table->operator[](query_id);
-		local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
+		JASS::query::ACCUMULATOR_TYPE rsv_at_k = 1;
+		if ((precomputed_minimum_rsv_table != NULL) && !precomputed_minimum_rsv_table->empty()) 
+			{
+			rsv_at_k = (*precomputed_minimum_rsv_table)[query_id];
+			if (rsv_at_k == 0)
+				rsv_at_k = 1;
+			}
+
+			local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*
@@ -557,7 +564,8 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 				Process the postings
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
-			local.jass_query->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset);
+			if (local.jass_query->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset))
+				break;
 			}
 
 		/*

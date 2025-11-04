@@ -196,7 +196,7 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+			virtual bool decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				auto time_taken = timer::start();
@@ -223,6 +223,8 @@ namespace JASS
 					add_rsv(*current, impact);
 				
 				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
+				
+				return 0;
 				}
 
 			/*

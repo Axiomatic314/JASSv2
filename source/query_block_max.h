@@ -243,7 +243,7 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
+			virtual bool decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
 				codex.decode(buffer, integers, compressed, compressed_size);
@@ -265,6 +265,8 @@ namespace JASS
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
+
+				return 0;
 				}
 
 			/*

@@ -240,10 +240,10 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			forceinline void decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
+			forceinline bool decode_and_process(ACCUMULATOR_TYPE impact, size_t integers, const void *compressed, size_t compressed_size)
 				{
 				set_impact(impact);
-				decode_with_writer(integers, compressed, compressed_size);
+				return decode_with_writer(integers, compressed, compressed_size);
 				}
 
 			/*
@@ -256,7 +256,7 @@ namespace JASS
 				@param compressed [in] The compressed sequence.
 				@param compressed_size [in] The length of the compressed sequence.
 			*/
-			virtual void decode_with_writer(size_t integers, const void *compressed, size_t compressed_size) = 0;
+			virtual bool decode_with_writer(size_t integers, const void *compressed, size_t compressed_size) = 0;
 
 			/*
 				QUERY::DECODE_WITH_WRITER()

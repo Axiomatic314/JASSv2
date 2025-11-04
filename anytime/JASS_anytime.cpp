@@ -30,6 +30,7 @@ static bool parameter_ascii_query_parser = false;					///< When true use the ASC
 static bool parameter_help = false;										///< Print the usage information
 static bool parameter_index_v2 = false;								///< The index is a JASS version 2 index
 std::string parameter_accumulator_manager = "2d_heap";	///< Which accumulator manager to use
+std::string parameter_top_k_oracle_filename = "";					// name of the file containing the bottom value of the top-k heap.
 
 static std::string parameters_errors;									///< Any errors as a result of command line parsing
 static auto parameters = std::make_tuple								///< The  command line parameter block
@@ -42,6 +43,7 @@ static auto parameters = std::make_tuple								///< The  command line parameter
 	JASS::commandline::parameter("-A",   "--accumulators", "<accumulator_manager> Which accumulator manager (2d_heap|1d_heap|simple|blockmax) to use [default = 2d_heap]", parameter_accumulator_manager),
 	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>               Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
 	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>            Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
+	JASS::commandline::parameter("-Q", "--queryrsvfile", "<filename>        Name of file containing a list of the minimum rsv value for a document to be found (1 per line: <query_id> <rsv>)", parameter_top_k_oracle_filename),
 	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent>     Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
 	JASS::commandline::parameter("-R",   "--RHO",          "<integer_max>         Max number of postings to process [default is all]", maximum_number_of_postings_to_process),
 	JASS::commandline::parameter("-t",   "--threads",      "<threadcount>         Number of threads to use (one query per thread) [default = -t1]", parameter_threads),
@@ -163,7 +165,7 @@ static int main_event(int argc, const char *argv[])
 	/*
 		Load the pre-computed rsv score table
 	*/
-	engine.set_top_k_limit();
+	engine.set_top_k_limit(parameter_top_k_oracle_filename);
 
 	/*
 		Set the accumulator width
