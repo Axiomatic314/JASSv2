@@ -12,6 +12,7 @@ set(JASSlib_FILES
 	accumulator_2d.h
 	accumulator_block_max.h
 	accumulator_counter_interleaved.h
+	accumulator_counter_prefix.h
 	accumulator_counter.h
 	accumulator_simple.h
 	allocator.h

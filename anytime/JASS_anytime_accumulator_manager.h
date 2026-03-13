@@ -22,6 +22,7 @@
 #include "accumulator_simple.h"
 #include "accumulator_counter.h"
 #include "accumulator_counter_interleaved.h"
+#include "accumulator_counter_prefix.h"
 
 namespace JASS_anytime_accumulator_manager
 	{
@@ -51,6 +52,8 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_heap<JASS::accumulator_counter<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS,4>>(codex);
 		else if (name == "counter_interleaved")
 			return new JASS::query_heap<JASS::accumulator_counter_interleaved<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS,4>>(codex);
+		else if (name == "counter_prefix")
+			return new JASS::query_heap<JASS::accumulator_counter_prefix<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
 		else
 			{
 			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";
