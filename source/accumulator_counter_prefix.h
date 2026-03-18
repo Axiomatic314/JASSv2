@@ -42,8 +42,8 @@ namespace JASS
 		private:
 			ELEMENT accumulator[NUMBER_OF_ACCUMULATORS];				///< The accumulator array
 			size_t number_of_accumulators;								///< The number of accumulators that the user asked for
-            uint8_t query_counter; 										///< 
-            size_t prefix; 												///< The width of the query counter prefix
+            uint8_t query_counter; 										///<
+            uint8_t prefix; 												///< The width of the query counter prefix
             ELEMENT width; 												///< The width of the accumulator value
 
 		public:
@@ -85,10 +85,10 @@ namespace JASS
 			void init(size_t number_of_accumulators, size_t preferred_width = 0)
 				{
 				this->number_of_accumulators = number_of_accumulators;
-                query_counter = 0;
                 prefix = preferred_width; //todo: change the param used for this
-                width = sizeof(ELEMENT) * 8 - prefix; 
+                width = sizeof(ELEMENT) * 8 - prefix;
 				rewind();
+				query_counter = 0;
 				}
 
 			/*
@@ -103,7 +103,7 @@ namespace JASS
 			*/
 			forceinline ELEMENT get_value(size_t which)
 				{
-                if (accumulator[which] >> width != query_counter)
+                if ((accumulator[which] >> width) != query_counter)
                     return 0;
                 else
 				    return accumulator[which] & ((1 << width) - 1);
@@ -122,8 +122,8 @@ namespace JASS
 			*/
 			forceinline ELEMENT &operator[](size_t which)
 				{
-				if (accumulator[which] >> width != query_counter)
-                    accumulator[which] = query_counter << width; 
+				if ((accumulator[which] >> width) != query_counter)
+                    accumulator[which] = query_counter << width;
                 return accumulator[which];
 				}
 
@@ -160,7 +160,7 @@ namespace JASS
 			*/
 			/*!
 				@brief Clear the accumulators ready for use
-				@details This only clears the accumulator array if the query counter has hit 0. 
+				@details This only clears the accumulator array if the query counter has hit 0.
 			*/
 			void rewind(void)
 				{

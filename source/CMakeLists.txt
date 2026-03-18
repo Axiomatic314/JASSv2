@@ -192,6 +192,7 @@ set(JASSlib_FILES
 	query.h
 	query_block_max.h
 	query_heap.h
+	query_heap_counter.h
 	query_simple.h
 	query_term.h
 	query_term_list.h
