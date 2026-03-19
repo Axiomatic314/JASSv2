@@ -4,6 +4,7 @@
 	Copyright (c) 2021 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
+#include "accumulator_counter_prefix.h"
 #include "timer.h"
 #include "threads.h"
 #include "query_heap.h"
@@ -327,7 +328,7 @@ JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	{
 	if (index == nullptr)
 		return JASS_anytime_result();
-		
+
 	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 
@@ -523,9 +524,18 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
 			}
 
+		size_t counter_max_rsv = (1 << (sizeof(JASS::query::ACCUMULATOR_TYPE) * 8 - accumulator_width)) - 1;
+		if (accumulator_manager == "counter_prefix" && largest_possible_rsv > counter_max_rsv)
+		    {
+			scale_rsv_scores = true;
+			smallest_possible_rsv = (uint32_t)((double)smallest_possible_rsv / (double)largest_possible_rsv * (double)counter_max_rsv);
+			largest_possible_rsv = counter_max_rsv;
+			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
+			}
+
 		// JASS::query::ACCUMULATOR_TYPE rsv_at_k = 1;
 		JASS::query::ACCUMULATOR_TYPE rsv_at_k = 1;
-		if ((precomputed_minimum_rsv_table != NULL) && !precomputed_minimum_rsv_table->empty()) 
+		if ((precomputed_minimum_rsv_table != NULL) && !precomputed_minimum_rsv_table->empty())
 			{
 			rsv_at_k = (*precomputed_minimum_rsv_table)[query_id];
 			if (rsv_at_k == 0)
@@ -547,7 +557,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		size_t postings_processed = 0;
 		for (auto *header = local.segment_order.get(); header < current_segment; header++)
 			{
-			if (scale_rsv_scores)
+			if (accumulator_manager == "counter_prefix" && scale_rsv_scores)
+			    header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * ((double)counter_max_rsv - query_terms_count) + 1);
+			else if (scale_rsv_scores)
 				header->impact = (JASS::query::ACCUMULATOR_TYPE)((double)header->impact / (double)largest_possible_rsv_with_overflow * ((double)JASS::query::MAX_RSV - query_terms_count) + 1);
 
 //std::cout << "Process Segment->(" << header->impact << ":" << header->segment_frequency << ")\n";
@@ -572,7 +584,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			Finally we have the results list in the heap, now sort it.
 		*/
 		local.jass_query->sort();
-		
+
 		/*
 			stop the timer
 		*/
@@ -599,4 +611,3 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 	}
-
