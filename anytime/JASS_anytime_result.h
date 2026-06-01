@@ -28,6 +28,7 @@ class JASS_anytime_result
 		std::string results_list;			///< The results list
 		size_t postings_processed;			///< The number of postings processed for this query
 		size_t search_time_in_ns;			///< The time it took to resolve the query
+		std::string accumulator_manager;    ///< The accumulator management strategy used for the query
 
 	/*
 		JASS_ANYTIME_RESULT::JASS_ANYTIME_RESULT()
@@ -58,12 +59,13 @@ class JASS_anytime_result
       @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
       @param search_time_in_ns [in] The time it took to resolve the query
 	*/
-	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns) :
+	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns, const std::string accumulator_manager) :
 		query_id(query_id),
 		query(query),
 		results_list(results_list),
 		postings_processed(postings_processed),
-		search_time_in_ns(search_time_in_ns)
+		search_time_in_ns(search_time_in_ns),
+		accumulator_manager(accumulator_manager)
 		{
 		/* Nothing */
 		}

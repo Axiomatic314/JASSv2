@@ -40,7 +40,7 @@ JASS_anytime_api::JASS_anytime_api()
 	which_query_parser = JASS::parser_query::parser_type::query;
 	accumulator_width = 0;
 	stats.threads = 1;
-	accumulator_manager = "2d_heap";
+	accumulator_manager_current = "2d_heap";
 	}
 
 /*
@@ -77,8 +77,11 @@ JASS_anytime_api::thread_data &JASS_anytime_api::get_thread_local_data(size_t th
 			Allocate a JASS query object
 		*/
 		JASS::compress_integer &codex = *index->codex(codex_name, d_ness);
-		initial.jass_query = JASS_anytime_accumulator_manager::get_by_name(accumulator_manager, codex);
-		initial.jass_query->init(index->primary_keys(), index->document_count(), (JASS::query::DOCID_TYPE)top_k, accumulator_width);
+		for (size_t current = 0; current < size(accumulator_manager); current++)
+		    {
+			initial.jass_query[current] = JASS_anytime_accumulator_manager::get_by_name(accumulator_manager[current], codex);
+			initial.jass_query[current]->init(index->primary_keys(), index->document_count(), (JASS::query::DOCID_TYPE)top_k, accumulator_width);
+			}
 		}
 
 	return initial;
@@ -315,7 +318,7 @@ JASS_anytime_result JASS_anytime_api::search(const std::string &query)
 	{
 	if (index == nullptr)
 		return JASS_anytime_result();
-		
+
 	JASS_anytime_thread_result output;
 	std::vector<JASS_anytime_query> query_list;
 
@@ -403,6 +406,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 	size_t next_query = 0;
 	std::string query = JASS_anytime_query::get_next_query(query_list, next_query);
 	std::string query_id;
+	size_t accumulator_manager_index = 0;
 
 	while (query.size() != 0)
 		{
@@ -428,7 +432,12 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		/*
 			Process the query
 		*/
-		local.jass_query->parse(query, which_query_parser);
+		local.jass_query[accumulator_manager_index]->parse(query, which_query_parser);
+
+		/*
+		    Reset the timer
+	    */
+		total_search_time = JASS::timer::start();
 
 		/*
 			Parse the query and extract the list of impact segments
@@ -437,10 +446,10 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		uint32_t largest_possible_rsv = (std::numeric_limits<decltype(largest_possible_rsv)>::min)();
 		uint32_t largest_possible_rsv_with_overflow;
 		uint32_t smallest_possible_rsv = (std::numeric_limits<decltype(smallest_possible_rsv)>::max)();
-		size_t query_terms_count = local.jass_query->terms().size();
+		size_t query_terms_count = local.jass_query[accumulator_manager_index]->terms().size();
 		uint64_t total_postings_for_query = 0;
 //std::cout << "\n";
-		for (const auto &term : local.jass_query->terms())
+		for (const auto &term : local.jass_query[accumulator_manager_index]->terms())
 			{
 //std::cout << "TERM:" << term << " ";
 
@@ -511,7 +520,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			smallest_possible_rsv = smallest_possible_rsv == 0 ? 1 : smallest_possible_rsv;
 			}
 
-		local.jass_query->rewind(smallest_possible_rsv, 1, largest_possible_rsv);
+		local.jass_query[accumulator_manager_index]->rewind(smallest_possible_rsv, 1, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
 		/*
@@ -520,6 +529,19 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		if (relative_postings_to_process != 1)
 			postings_to_process = total_postings_for_query * relative_postings_to_process;
 
+		/*
+		    Check to see which accumulator management strategy to use.
+	    */
+		accumulator_manager_current = "2d_heap";
+		if (relative_postings_to_process != 1 && postings_to_process > 103353)
+            accumulator_manager_current = "1d_heap";
+		else if (total_postings_for_query > 2463174)
+            accumulator_manager_current = "blockmax";
+		for (accumulator_manager_index = 0; accumulator_manager_index < size(accumulator_manager); accumulator_manager_index++)
+		    {
+			if (accumulator_manager[accumulator_manager_index] == accumulator_manager_current)
+			    break;
+			}
 		/*
 			Process the segments
 		*/
@@ -543,14 +565,14 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 				Process the postings
 			*/
 			JASS::query::ACCUMULATOR_TYPE impact = header->impact;
-			local.jass_query->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset);
+			local.jass_query[accumulator_manager_index]->decode_and_process(impact, header->segment_frequency, index->postings() + header->offset, header->end - header->offset);
 			}
 
 		/*
 			Finally we have the results list in the heap, now sort it.
 		*/
-		local.jass_query->sort();
-		
+		local.jass_query[accumulator_manager_index]->sort();
+
 		/*
 			stop the timer
 		*/
@@ -560,16 +582,16 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			Serialise the results list (don't time this)
 		*/
 		std::ostringstream results_list;
-		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query, "JASSv2", true);
+		JASS::run_export(JASS::run_export::TREC, results_list, query_id.c_str(), *local.jass_query[accumulator_manager_index], "JASSv2", true);
 		/*
 			Store the results (and the time it took)
 		*/
-		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken);
+		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken, accumulator_manager_current);
 
 		/*
 			Re-start the timer
 		*/
-		total_search_time = JASS::timer::start();
+		// total_search_time = JASS::timer::start();
 
 		/*
 			get the next query
@@ -577,4 +599,3 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		query = JASS_anytime_query::get_next_query(query_list, next_query);
 		}
 	}
-

@@ -20,6 +20,7 @@
 #include "deserialised_jass_v2.h"
 #include "JASS_anytime_result.h"
 #include "JASS_anytime_thread_result.h"
+#include <cstddef>
 
 /*
 	ENUM JASS_ERROR
@@ -62,7 +63,7 @@ class JASS_anytime_api
 			{
 			public:
 				std::unique_ptr<JASS::deserialised_jass_v1::segment_header[]> segment_order;
-				JASS::query *jass_query;
+				JASS::query *jass_query[3];
 			};
 
 	private:
@@ -74,7 +75,8 @@ class JASS_anytime_api
 		size_t accumulator_width;										///< Width of the accumulator array
 		JASS_anytime_stats stats;										///< Stats for this "session"
 		std::map<size_t, thread_data> thread_local_data;		///< Data needed by each thread (the accumulators array, etc)
-		std::string accumulator_manager;								///< The name of the accumulator manager
+		std::string accumulator_manager[3] = {"2d_heap","1d_heap","blockmax"};
+		std::string accumulator_manager_current;                ///< The name of the current accumulator manager
 
 	private:
 		/*
@@ -213,7 +215,7 @@ class JASS_anytime_api
 		*/
 		void set_accumulator_manager(const std::string &name)
 			{
-			accumulator_manager = name;
+			accumulator_manager_current = name;
 			}
 
 		/*

@@ -56,7 +56,7 @@ JASS::channel *make_input_channel(std::string filename)
 	{
 	std::string file;
 	JASS::file::read_entire_file(filename, file);
-	
+
 	/*
 		If the start of the file is a digit then we think we have a JASS topic file.
 		If the start is not a digit then we're expecting to see a TREC topic file.
@@ -105,7 +105,7 @@ void load_queries(std::vector<JASS_anytime_query> &query_list, const std::string
 		else
 		  query.clear();            // str is all whitespace
 		}
-		
+
 	delete input;
 	}
 
@@ -227,7 +227,7 @@ static int main_event(int argc, const char *argv[])
 	std::vector<JASS_anytime_query> query_list;
 	load_queries(query_list, parameter_queryfilename);
 	stats.number_of_queries = query_list.size();
-	
+
 	/*
 		Search
 	*/
@@ -252,7 +252,7 @@ static int main_event(int argc, const char *argv[])
 	for (size_t which = 0; which < parameter_threads ; which++)
 		for (const auto &[query_id, result] : output[which])
 			{
-			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns>\n";
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns><accumulator_manager>" << result.accumulator_manager << "</accumulator_manager>\n";
 			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
 			TREC_file << result.results_list;
 			}
