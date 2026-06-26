@@ -1,2 +1,10 @@
 
 .DS_Store
+build/
+.vscode/
+.zed/
+CI*.bin
+JASSv2Stats.txt
+external/zlib/
+external/zstd/
+ranking.txt
