@@ -18,6 +18,8 @@
 #include "query.h"
 #include "compress_integer.h"
 #include "accumulator_block_max.h"
+#include "timer.h"
+#include <ctime>
 
 namespace JASS
 	{
@@ -135,9 +137,16 @@ namespace JASS
 			virtual void rewind(ACCUMULATOR_TYPE smallest_possible_rsv = 0, ACCUMULATOR_TYPE top_k_lower_bound = 1, ACCUMULATOR_TYPE largest_possible_rsv = 0)
 				{
 				sorted = false;
+				auto time_taken = timer::start();
 				accumulators.rewind();
+				time_rewind += timer::stop(time_taken).nanoseconds();
 				needed_for_top_k = this->top_k;
 				query::rewind(largest_possible_rsv);
+				time_add = 0;
+                time_heapify = 0;
+                time_heap = 0;
+                time_decompress = 0;;
+                time_sort = 0;
 				}
 
 			/*
@@ -160,6 +169,7 @@ namespace JASS
 						Here we scan the block looking for values that need to be inserted into the top-k heap.  If a
 						block max score is less than the bottom of the heap we can skip the block, thus avoiding a full scan
 					*/
+					auto time_taken = timer::start();
 					ACCUMULATOR_TYPE bottom_of_heap = 0;
 					ACCUMULATOR_TYPE *which_accumulator = accumulators.accumulator;
 					ACCUMULATOR_TYPE *which_block = accumulators.block_max;
@@ -182,6 +192,7 @@ namespace JASS
 									*/
 									if (needed_for_top_k > 0)
 										{
+										auto time_to_heap = timer::start();
 										/*
 											Heap isn't full, so just top it up
 										*/
@@ -194,6 +205,7 @@ namespace JASS
 											top_results.make_heap();
 											bottom_of_heap = *accumulator_pointers[0]; /* set the new bottom of heap value */
 											}
+										time_heapify += timer::stop(time_to_heap).nanoseconds();
 										}
 									else
 										{
@@ -210,11 +222,14 @@ namespace JASS
 						which_accumulator += accumulators.width;
 						which_block++;
 						}
+					time_heap += timer::stop(time_taken).nanoseconds() - time_heapify;
 
 					/*
 						Now sort the heap array to get the answers in rank order.
 					*/
+					time_taken = timer::start();
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
+					time_sort += timer::stop(time_taken).nanoseconds();
 					sorted = true;
 					}
 				}
@@ -230,7 +245,9 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
+				auto time_taken = timer::start();
 				accumulators.add(document_id, score);
+				time_add += timer::stop(time_taken).nanoseconds();
 				}
 
 			/*
@@ -246,12 +263,14 @@ namespace JASS
 			virtual bool decode_with_writer(size_t integers, const void *compressed, size_t compressed_size)
 				{
 				DOCID_TYPE *buffer = reinterpret_cast<DOCID_TYPE *>(decompress_buffer.data());
+				auto time_taken = timer::start();
 				codex.decode(buffer, integers, compressed, compressed_size);
 
 				/*
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
+				time_decompress += timer::stop(time_taken).nanoseconds();
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it

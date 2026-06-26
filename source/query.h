@@ -89,6 +89,12 @@ namespace JASS
 
 		public:
 			DOCID_TYPE top_k;																	///< The number of results to track.
+            size_t time_rewind;
+            size_t time_add;
+            size_t time_heapify;
+            size_t time_heap;
+            size_t time_decompress;
+            size_t time_sort;
 
 		public:
 			/*
@@ -105,7 +111,13 @@ namespace JASS
 				parsed_query(nullptr),
 				primary_keys(nullptr),
 				codex(codex),
-				top_k(0)
+				top_k(0),
+				time_rewind(0),
+				time_add(0),
+				time_heapify(0),
+				time_heap(0),
+				time_decompress(0),
+				time_sort(0)
 				{
 				/*	 Nothing */
 				}

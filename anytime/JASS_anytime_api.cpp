@@ -444,6 +444,11 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		local.jass_query->parse(query, which_query_parser);
 
 		/*
+		    Reset the timer
+	    */
+		total_search_time = JASS::timer::start();
+
+		/*
 			Parse the query and extract the list of impact segments
 		*/
 		JASS::deserialised_jass_v1::segment_header *current_segment = local.segment_order.get();
@@ -541,7 +546,6 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			if (rsv_at_k == 0)
 				rsv_at_k = 1;
 			}
-
 			local.jass_query->rewind(smallest_possible_rsv, rsv_at_k, largest_possible_rsv);
 //std::cout << "MAXRSV:" << largest_possible_rsv << " MINRSV:" << smallest_possible_rsv << "\n";
 
@@ -598,12 +602,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		/*
 			Store the results (and the time it took)
 		*/
-		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken);
-
-		/*
-			Re-start the timer
-		*/
-		total_search_time = JASS::timer::start();
+		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken, local.jass_query->time_rewind, local.jass_query->time_add, local.jass_query->time_heapify, local.jass_query->time_heap, local.jass_query->time_decompress, local.jass_query->time_sort);
 
 		/*
 			get the next query

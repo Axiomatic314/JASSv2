@@ -20,15 +20,9 @@
 #include "exception_done.h"
 #include "compress_integer_variable_byte.h"
 #include "timer.h"
-#include "query_timer.h"
 
 namespace JASS
 	{
-	extern query_timer time_rewind;
-    extern query_timer time_add_rsv;
-    extern query_timer time_decompress;
-    extern query_timer time_init;
-	extern query_timer time_sort;
 
 	/*
 		CLASS QUERY_HEAP_COUNTER
@@ -96,9 +90,7 @@ namespace JASS
 			virtual void init(const std::vector<std::string> &primary_keys, DOCID_TYPE documents = 1024, DOCID_TYPE top_k = 10, size_t width = 7)
 				{
 				query::init(primary_keys, documents, top_k);
-				auto time_taken = timer::start();
 				accumulators.init(documents, width);
-				time_init.add_time(timer::stop(time_taken).microseconds());
 				top_results.set_top_k(top_k);
 				}
 
@@ -154,10 +146,15 @@ namespace JASS
 				accumulator_pointers[0] = &zero;
 				auto time_taken = timer::start();
 				accumulators.rewind();
-				time_rewind.add_time(timer::stop(time_taken).microseconds());
+				time_rewind = timer::stop(time_taken).nanoseconds();
 				needed_for_top_k = this->top_k;
 				this->top_k_lower_bound = top_k_lower_bound;
 				query::rewind(largest_possible_rsv);
+                time_add = 0;
+                time_heapify = 0;
+                time_heap = 0;
+                time_decompress = 0;;
+                time_sort = 0;
 				}
 
 			/*
@@ -169,14 +166,14 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
-				auto time_taken = timer::start();
 				if (!sorted)
 					{
 //					std::partial_sort(accumulator_pointers + needed_for_top_k, accumulator_pointers + top_k, accumulator_pointers + top_k)
+                    auto time_taken = timer::start();
 					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
+					time_sort += timer::stop(time_taken).nanoseconds();
 					sorted = true;
 					}
-				time_sort.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -190,8 +187,10 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
+				auto time_taken = timer::start();
 				accumulator_pointer which = &accumulators[document_id];			/* This will create the accumulator if it doesn't already exist. */
 				*which.pointer() += score;
+				time_add += timer::stop(time_taken).nanoseconds();
 				ACCUMULATOR_TYPE which_value = accumulators.get_value(document_id);
 				/*
 					accumulator is less than the heap entry value
@@ -203,6 +202,7 @@ namespace JASS
 				*/
 				if (needed_for_top_k > 0)
 					{
+					time_taken = timer::start();
 					/*
 						Check if we weren't already in the heap, and if we're not then put us into the array.
 					*/
@@ -213,23 +213,32 @@ namespace JASS
 							{
 							top_results.make_heap();
 							if (top_k_lower_bound != 1)
+							    {
+								time_heapify += timer::stop(time_taken).nanoseconds();
 								throw Done(); /* We must be using the Oracle, and we must have filled the top-k and so we can stop processing this query. */
+								}
 							// top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 							top_k_lower_bound = accumulators.get_value(accumulators.get_index(accumulator_pointers[0].pointer()));
 							}
 						}
+					time_heapify += timer::stop(time_taken).nanoseconds();
 					return;
 					}
 				/*
 					accumulator is equal to the heap entry value, now we need to tie break
 				*/
+				time_taken = timer::start();
 				if (which_value == top_k_lower_bound)
 					{
 					if (which.pointer() < accumulator_pointers[0].pointer())
+					    {
+						time_heap += timer::stop(time_taken).nanoseconds();
 						return;
+						}
 					top_results.push_back(which); /* we're not in the heap so add this accumulator to the heap */
 					// top_k_lower_bound = *accumulator_pointers[0];
 					top_k_lower_bound = accumulators.get_value(accumulators.get_index(accumulator_pointers[0].pointer()));
+					time_heap += timer::stop(time_taken).nanoseconds();
 					return;
 					}
 				/*
@@ -246,6 +255,7 @@ namespace JASS
 					}
 				// top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 				top_k_lower_bound = accumulators.get_value(accumulators.get_index(accumulator_pointers[0].pointer()));
+				time_heap += timer::stop(time_taken).nanoseconds();
 				}
 
 			/*
@@ -270,14 +280,13 @@ namespace JASS
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
-				time_decompress.add_time(timer::stop(time_taken).microseconds());
+				time_decompress += timer::stop(time_taken).nanoseconds();
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
 				const DOCID_TYPE *end = buffer + integers;
-				time_taken = timer::start();
 #if defined(__clang__)
 				#pragma unroll 8
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -293,8 +302,6 @@ namespace JASS
 						answer = 1;
 						break;
 						}
-
-				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
 				return answer;
 				}
 

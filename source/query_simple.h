@@ -18,15 +18,9 @@
 #include "top_k_qsort.h"
 #include "compress_integer_variable_byte.h"
 #include "timer.h"
-#include "query_timer.h"
 
 namespace JASS
 	{
-	extern query_timer time_rewind;
-    extern query_timer time_add_rsv;
-    extern query_timer time_decompress;
-    extern query_timer time_init;
-	extern query_timer time_sort;
 	/*
 		CLASS QUERY_SIMPLE
 		------------------
@@ -86,11 +80,9 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 
-				auto time_taken = timer::start();
 				for (DOCID_TYPE which = 0; which < documents; which++)
 					accumulator_pointer[which] = &accumulator[which];
 
-				time_init.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -144,7 +136,12 @@ namespace JASS
 				query::rewind(largest_possible_rsv);
 				auto time_taken = timer::start();
 				::memset(accumulator, 0, documents * sizeof(*accumulator));
-				time_rewind.add_time(timer::stop(time_taken).microseconds());
+				time_rewind = timer::stop(time_taken).nanoseconds();
+				time_add = 0;
+                time_heapify = 0;
+                time_heap = 0;
+                time_decompress = 0;;
+                time_sort = 0;
 				}
 
 			/*
@@ -156,8 +153,9 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
-				auto time_taken = timer::start();
 				if (!sorted)
+				    {
+				    auto time_taken = timer::start();
 					std::partial_sort(accumulator_pointer, accumulator_pointer + top_k, accumulator_pointer + documents,
 						[](ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) -> bool
 						{
@@ -168,8 +166,9 @@ namespace JASS
 						return false;
 						}
             		);
+					time_sort += timer::stop(time_taken).nanoseconds();
+					}
 				sorted = true;
-				time_sort.add_time(timer::stop(time_taken).microseconds());
 				}
 
 			/*
@@ -183,7 +182,9 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
+				auto time_taken = timer::start();
 				accumulator[document_id] += score;
+				time_add += timer::stop(time_taken).nanoseconds();
 				}
 
 			/*
@@ -206,14 +207,13 @@ namespace JASS
 					D1-decode inplace with SIMD instructions then process one at a time
 				*/
 				simd::cumulative_sum_256(buffer, integers);
-				time_decompress.add_time(timer::stop(time_taken).microseconds());
+				time_decompress += timer::stop(time_taken).nanoseconds();
 
 				/*
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
 				const DOCID_TYPE *end = buffer + integers;
-				time_taken = timer::start();
 #if defined(__clang__)
 				#pragma unroll 8
 #elif defined(__GNUC__) || defined(__GNUG__)
@@ -221,9 +221,8 @@ namespace JASS
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
 					add_rsv(*current, impact);
-				
-				time_add_rsv.add_time(timer::stop(time_taken).microseconds());
-				
+
+
 				return 0;
 				}
 

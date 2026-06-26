@@ -28,6 +28,12 @@ class JASS_anytime_result
 		std::string results_list;			///< The results list
 		size_t postings_processed;			///< The number of postings processed for this query
 		size_t search_time_in_ns;			///< The time it took to resolve the query
+		size_t time_rewind;
+		size_t time_add;
+		size_t time_heapify;
+		size_t time_heap;
+		size_t time_decompress;
+		size_t time_sort;
 
 	/*
 		JASS_ANYTIME_RESULT::JASS_ANYTIME_RESULT()
@@ -41,7 +47,13 @@ class JASS_anytime_result
 		query(),
 		results_list(),
 		postings_processed(0),
-		search_time_in_ns(0)
+		search_time_in_ns(0),
+		time_rewind(0),
+		time_add(0),
+		time_heapify(0),
+		time_heap(0),
+		time_decompress(0),
+		time_sort(0)
 		{
 		/* Nothing */
 		}
@@ -58,12 +70,18 @@ class JASS_anytime_result
       @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
       @param search_time_in_ns [in] The time it took to resolve the query
 	*/
-	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns) :
+	JASS_anytime_result(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns, size_t time_rewind, size_t time_add, size_t time_heapify, size_t time_heap, size_t time_decompress, size_t time_sort) :
 		query_id(query_id),
 		query(query),
 		results_list(results_list),
 		postings_processed(postings_processed),
-		search_time_in_ns(search_time_in_ns)
+		search_time_in_ns(search_time_in_ns),
+		time_rewind(time_rewind),
+		time_add(time_add),
+		time_heapify(time_heapify),
+		time_heap(time_heap),
+		time_decompress(time_decompress),
+		time_sort(time_sort)
 		{
 		/* Nothing */
 		}
