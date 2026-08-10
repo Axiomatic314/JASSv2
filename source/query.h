@@ -95,6 +95,8 @@ namespace JASS
             size_t time_heap;
             size_t time_decompress;
             size_t time_sort;
+            size_t heap_push_back;
+            size_t heap_promote;
 
 		public:
 			/*
@@ -117,7 +119,9 @@ namespace JASS
 				time_heapify(0),
 				time_heap(0),
 				time_decompress(0),
-				time_sort(0)
+				time_sort(0),
+				heap_push_back(0),
+				heap_promote(0)
 				{
 				/*	 Nothing */
 				}

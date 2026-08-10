@@ -602,7 +602,7 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		/*
 			Store the results (and the time it took)
 		*/
-		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken, local.jass_query->time_rewind, local.jass_query->time_add, local.jass_query->time_heapify, local.jass_query->time_heap, local.jass_query->time_decompress, local.jass_query->time_sort);
+		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken, local.jass_query->time_rewind, local.jass_query->time_add, local.jass_query->time_heapify, local.jass_query->time_heap, local.jass_query->time_decompress, local.jass_query->time_sort, local.jass_query->heap_push_back, local.jass_query->heap_promote);
 
 		/*
 			get the next query

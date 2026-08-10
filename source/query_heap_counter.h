@@ -155,6 +155,8 @@ namespace JASS
                 time_heap = 0;
                 time_decompress = 0;;
                 time_sort = 0;
+                heap_push_back = 0;
+				heap_promote = 0;
 				}
 
 			/*
@@ -237,6 +239,7 @@ namespace JASS
 						}
 					top_results.push_back(which); /* we're not in the heap so add this accumulator to the heap */
 					// top_k_lower_bound = *accumulator_pointers[0];
+					heap_push_back++;
 					top_k_lower_bound = accumulators.get_value(accumulators.get_index(accumulator_pointers[0].pointer()));
 					time_heap += timer::stop(time_taken).nanoseconds();
 					return;
@@ -247,11 +250,15 @@ namespace JASS
 					otherwise we were and need to be promoted
 				*/
 				if (which_value - score < top_k_lower_bound || (which_value - score == top_k_lower_bound && which.pointer() < accumulator_pointers[0].pointer()))
+				    {
 					top_results.push_back(which);
+					heap_push_back++;
+					}
 				else
 					{
 					auto at = top_results.find(which); /* we're already in there so find us and reshuffle the heap. */
 					top_results.promote(which, at); /* we're already in the heap so promote this document */
+					heap_promote++;
 					}
 				// top_k_lower_bound = *accumulator_pointers[0]; /* set the new bottom of heap value */
 				top_k_lower_bound = accumulators.get_value(accumulators.get_index(accumulator_pointers[0].pointer()));

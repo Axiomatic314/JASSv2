@@ -49,9 +49,9 @@ class JASS_anytime_thread_result
          @param postings_processed [in] The numvber of postings processed (that is, <docid, impact> pairs)
          @param search_time_in_ns [in] The time it took to resolve the query
 		*/
-		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns,  size_t time_rewind, size_t time_add, size_t time_heapify, size_t time_heap, size_t time_decompress, size_t time_sort)
+		void push_back(const std::string &query_id, const std::string &query, const std::string &results_list, size_t postings_processed, size_t search_time_in_ns,  size_t time_rewind, size_t time_add, size_t time_heapify, size_t time_heap, size_t time_decompress, size_t time_sort, size_t heap_push_back, size_t heap_promote)
 			{
-			results[query_id] = JASS_anytime_result(query_id, query, results_list, postings_processed, search_time_in_ns, time_rewind, time_add, time_heapify, time_heap, time_decompress, time_sort);
+			results[query_id] = JASS_anytime_result(query_id, query, results_list, postings_processed, search_time_in_ns, time_rewind, time_add, time_heapify, time_heap, time_decompress, time_sort, heap_push_back, heap_promote);
 			}
 
 		/*

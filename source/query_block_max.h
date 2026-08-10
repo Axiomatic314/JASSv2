@@ -147,6 +147,7 @@ namespace JASS
                 time_heap = 0;
                 time_decompress = 0;;
                 time_sort = 0;
+                heap_push_back = 0;
 				}
 
 			/*
@@ -214,6 +215,7 @@ namespace JASS
 										*/
 										top_results.push_back(current_accumulator);
 										bottom_of_heap = *accumulator_pointers[0]; /* set the new bottom of heap value */
+										heap_push_back++;
 										}
 									}
 								current_accumulator++;

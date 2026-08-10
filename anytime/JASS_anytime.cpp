@@ -259,7 +259,7 @@ static int main_event(int argc, const char *argv[])
 	for (size_t which = 0; which < parameter_threads ; which++)
 		for (const auto &[query_id, result] : output[which])
 			{
-			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns><time_rewind>" << result.time_rewind << "</time_rewind><time_add>" << result.time_add << "</time_add><time_heapify>" << result.time_heapify << "</time_heapify><time_heap>" << result.time_heap << "</time_heap><time_decompress>" << result.time_decompress << "</time_decompress><time_sort>" << result.time_sort << "</time_sort>\n";
+			stats_file << "<id>" << result.query_id << "</id><query>" << result.query << "</query><postings>" << result.postings_processed << "</postings><time_ns>" << result.search_time_in_ns << "</time_ns><time_rewind>" << result.time_rewind << "</time_rewind><time_add>" << result.time_add << "</time_add><time_heapify>" << result.time_heapify << "</time_heapify><time_heap>" << result.time_heap << "</time_heap><time_decompress>" << result.time_decompress << "</time_decompress><time_sort>" << result.time_sort << "</time_sort><heap_push_back>" << result.heap_push_back << "</heap_push_back><heap_promote>" << result.heap_promote << "</heap_push_back>\n";
 			stats.sum_of_CPU_time_in_ns += result.search_time_in_ns;
 			TREC_file << result.results_list;
 			}
