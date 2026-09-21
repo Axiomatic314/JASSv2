@@ -5,6 +5,7 @@
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
 */
 #include "accumulator_counter_prefix.h"
+#include "query.h"
 #include "timer.h"
 #include "threads.h"
 #include "query_heap.h"
@@ -18,6 +19,8 @@
 #include "deserialised_jass_v2.h"
 #include "JASS_anytime_thread_result.h"
 #include "JASS_anytime_accumulator_manager.h"
+#include <iostream>
+#include <fstream>
 
 /*
 	JASS_ANYTIME_API::ANYTIME_BOOTSTRAP()
@@ -603,6 +606,20 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 			Store the results (and the time it took)
 		*/
 		output.push_back(query_id, query, results_list.str(), postings_processed, time_taken, local.jass_query->time_rewind, local.jass_query->time_add, local.jass_query->time_heapify, local.jass_query->time_heap, local.jass_query->time_decompress, local.jass_query->time_sort, local.jass_query->heap_push_back, local.jass_query->heap_promote);
+
+		//attempt to dump accumulator info for current query
+		std::ofstream accum_stream;
+		accum_stream.open("accumulator_stats.txt", std::ios::app);
+		if(!accum_stream){
+		    std::cout << "Issue with accumulator file...";
+		}
+		size_t accum_count = sizeof(local.jass_query->heap_record)/sizeof(local.jass_query->heap_record[0]);
+		JASS::query::ACCUMULATOR_TYPE *current_accumulator = local.jass_query->accum_start;
+		for(size_t docid = 0; docid < accum_count; docid++){
+		    accum_stream << query_id << ' ' << *current_accumulator << ' ' << local.jass_query->heap_record[docid] << ' ' << postings_processed << "\n";
+			current_accumulator++;
+		}
+		accum_stream.close();
 
 		/*
 			get the next query

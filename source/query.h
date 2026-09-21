@@ -97,6 +97,10 @@ namespace JASS
             size_t time_sort;
             size_t heap_push_back;
             size_t heap_promote;
+            // std::vector<ACCUMULATOR_TYPE> final_accumulators;
+            // std::vector<bool> heap_record;
+            ACCUMULATOR_TYPE *accum_start;
+            bool heap_record[MAX_DOCUMENTS];
 
 		public:
 			/*

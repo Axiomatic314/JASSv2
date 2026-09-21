@@ -43,6 +43,8 @@ namespace JASS
 			accumulator_pointer accumulator_pointers[MAX_TOP_K];				///< Array of pointers to the top k accumulators
 			heap<accumulator_pointer> top_results;									///< Heap containing the top-k results
 			DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
+			// bool heap_record[MAX_DOCUMENTS];
+
 
 		public:
 			/*
@@ -145,9 +147,11 @@ namespace JASS
 				time_add = 0;
                 time_heapify = 0;
                 time_heap = 0;
-                time_decompress = 0;;
+                time_decompress = 0;
                 time_sort = 0;
                 heap_push_back = 0;
+                ::memset(heap_record,false,accumulators.size()*sizeof(heap_record[0]));
+                ::memset(heap_record,true,needed_for_top_k*sizeof(heap_record[0]));
 				}
 
 			/*
@@ -216,6 +220,7 @@ namespace JASS
 										top_results.push_back(current_accumulator);
 										bottom_of_heap = *accumulator_pointers[0]; /* set the new bottom of heap value */
 										heap_push_back++;
+										heap_record[accumulators.get_index(current_accumulator)] = true;
 										}
 									}
 								current_accumulator++;
@@ -234,6 +239,7 @@ namespace JASS
 					time_sort += timer::stop(time_taken).nanoseconds();
 					sorted = true;
 					}
+				accum_start = accumulators.accumulator;
 				}
 
 			/*
