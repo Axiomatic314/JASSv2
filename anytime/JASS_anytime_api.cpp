@@ -616,7 +616,9 @@ void JASS_anytime_api::anytime(JASS_anytime_thread_result &output, std::vector<J
 		size_t accum_count = sizeof(local.jass_query->heap_record)/sizeof(local.jass_query->heap_record[0]);
 		JASS::query::ACCUMULATOR_TYPE *current_accumulator = local.jass_query->accum_start;
 		for(size_t docid = 0; docid < accum_count; docid++){
-		    accum_stream << query_id << ' ' << *current_accumulator << ' ' << local.jass_query->heap_record[docid] << ' ' << postings_processed << "\n";
+		    if(*current_accumulator > 0){
+		    accum_stream << query_id << ' ' << docid << ' ' << *current_accumulator << ' ' << local.jass_query->heap_record[docid] << ' ' << postings_processed << "\n";
+						}
 			current_accumulator++;
 		}
 		accum_stream.close();
