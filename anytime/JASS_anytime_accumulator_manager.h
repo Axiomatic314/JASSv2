@@ -20,6 +20,7 @@
 #include "query_block_max.h"
 #include "compress_integer.h"
 #include "accumulator_simple.h"
+#include "query_freq.h"
 
 namespace JASS_anytime_accumulator_manager
 	{
@@ -45,6 +46,8 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_simple(codex);
 		else if (name == "blockmax")
 			return new JASS::query_block_max(codex);
+		else if (name == "freq")
+			return new JASS::query_freq(codex);
 		else
 			{
 			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";

@@ -10,6 +10,7 @@
 #include "heap.h"
 #include "simd.h"
 #include "compress_integer_variable_byte.h"
+#include "top_k_qsort.h"
 
 namespace JASS
     {
@@ -20,7 +21,8 @@ namespace JASS
      	private:
       		ACCUMULATOR_TYPE accumulator[MAX_DOCUMENTS];							///< The accumulators, one per document in the collection
         	DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
-        	accumulator_pointer accumulator_pointers[MAX_TOP_K];							///< Array of pointers to the top-k accumulators
+        	// accumulator_pointer accumulator_pointers[MAX_TOP_K];							///< Array of pointers to the top-k accumulators
+         accumulator_pointer accumulator_pointers[MAX_DOCUMENTS];
          	heap<accumulator_pointer> top_results;							///< Heap containing the top-k results
          	uint32_t score_freq[MAX_RSV];							///< Array of document score frequencies
           	docid_rsv_pair next_result;							///< A single result, used by get_first() and get_next()
@@ -138,12 +140,24 @@ namespace JASS
 				@brief sort this results list before iteration over it.
 			*/
 			virtual void sort(void)
-			{
-				//todo
-				//need to populate the heap based on the score_freq array
-				//then sort with top_k_qsort
-				//this is similar to query_block_max.h
-			}
+				{
+					//todo
+					//need to populate the heap based on the score_freq array
+					//then sort with top_k_qsort
+					//this is similar to query_block_max.h
+					if (!sorted)
+					{
+					ACCUMULATOR_TYPE *current_accumulator = accumulator;
+					while (needed_for_top_k > 0)
+						{
+							accumulator_pointers[--needed_for_top_k] = current_accumulator++;
+						}
+					top_results.make_heap();
+
+	    			top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
+					sorted = true;
+					}
+				}
 
 			/*
 				QUERY_FREQ::ADD_RSV()
