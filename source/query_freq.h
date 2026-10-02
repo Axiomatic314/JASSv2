@@ -4,26 +4,25 @@
 */
 #pragma once
 
-#include "document.h"
-#include "pointer_box.h"
+// #include "pointer_box.h"
 #include "query.h"
-#include "heap.h"
+// #include "heap.h"
 #include "simd.h"
 #include "compress_integer_variable_byte.h"
-#include "top_k_qsort.h"
-#include <cstdint>
+#include <iostream>
+// #include "top_k_qsort.h"
+
 
 namespace JASS
     {
     class query_freq : public query
     	{
-     	private:
-      		typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
+     	// private:
+      // 		typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
      	private:
       		ACCUMULATOR_TYPE accumulator[MAX_DOCUMENTS];							///< The accumulators, one per document in the collection
         	DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
-        	accumulator_pointer accumulator_pointers[MAX_TOP_K];							///< Array of pointers to the top-k accumulators
-         	heap<accumulator_pointer> top_results;							///< Heap containing the top-k results
+         	ACCUMULATOR_TYPE *top_results[MAX_TOP_K];
          	uint32_t score_freq[MAX_RSV+1];							///< Array of document score frequencies
           	docid_rsv_pair next_result;							///< A single result, used by get_first() and get_next()
            	DOCID_TYPE next_result_location;							///< Used by get_first() and get_next() to determine which result is next
@@ -38,8 +37,8 @@ namespace JASS
 				@brief Constructor
 			*/
        		query_freq(compress_integer &codex) :
-         		query(codex),
-           		top_results(accumulator_pointers, top_k)
+         		query(codex)
+           		// top_results(accumulator_pointers, top_k)
            		{
              	rewind();
              	}
@@ -71,9 +70,10 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				::memset(accumulator,0,documents * sizeof(*accumulator));
-				top_results.set_top_k(top_k);
+				// top_results.set_top_k(top_k);
 				::memset(score_freq,0,MAX_RSV * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
+
 				}
 
 			/*
@@ -104,7 +104,8 @@ namespace JASS
 				if (next_result_location >= top_k - needed_for_top_k)
 					return NULL;
 
-				size_t id = accumulator_pointers[top_k - next_result_location - 1].pointer() - &accumulator[0];
+				// size_t id = accumulator_pointers[top_k - next_result_location - 1].pointer() - &accumulator[0];
+				size_t id = top_results[next_result_location] - accumulator;
 				next_result.document_id = id;
 				next_result.primary_key = &((*primary_keys)[id]);
 				next_result.rsv = accumulator[id];
@@ -141,51 +142,39 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
-					//todo
-					//need to populate the heap based on the score_freq array
-					//then sort with top_k_qsort
-					//this is similar to query_block_max.h
 					if (!sorted)
 					{
+					//find the top-k lower bound and the positions of the contenders
 					ACCUMULATOR_TYPE top_k_lower_bound = MAX_RSV;
 					ACCUMULATOR_TYPE current_score = MAX_RSV;
-					uint32_t top_k_contenders = 0;
+					size_t top_k_contenders = 0;
+					size_t score_positions[MAX_RSV+1];
 					if (score_freq[0] == documents) //all documents scored 0
 						return;
 					while (current_score > 0 && top_k_contenders < needed_for_top_k)
 						{
 						if (score_freq[current_score] > 0)
 							{
+							score_positions[current_score] = top_k_contenders;
 							top_k_contenders += score_freq[current_score];
 							top_k_lower_bound = current_score;
 							}
 						current_score--;
 						}
-					//now populate the heap using this lower bound
-					ACCUMULATOR_TYPE *current_accumulator = accumulator;
+					top_k_contenders = (top_k_contenders < top_k) ? top_k_contenders : top_k;
+					//now populate the top-k using the score_freq array
+					ACCUMULATOR_TYPE *current_accumulator = accumulator + documents;
 					while (top_k_contenders > 0)
 						{
-						if (*current_accumulator >= top_k_lower_bound)
+						//there may be more documents than needed at the lowest score
+						if (*current_accumulator >= top_k_lower_bound && score_positions[*current_accumulator]<top_k)
 							{
-							if (needed_for_top_k > 0) //heap isn't full
-								{
-								accumulator_pointers[--needed_for_top_k] = current_accumulator;
-								if (needed_for_top_k == 0) //we've just filled the heap
-									{
-									top_results.make_heap();
-									top_k_lower_bound = *accumulator_pointers[0];
-									}
-								}
-							else //heap is already full
-								{
-								top_results.push_back(current_accumulator);
-								top_k_lower_bound = *accumulator_pointers[0];
-								}
+							top_results[score_positions[*current_accumulator]++] = current_accumulator;
 							top_k_contenders--;
+							needed_for_top_k--;
 							}
-						current_accumulator++;
+						current_accumulator--;
 						}
-	    			top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
 					sorted = true;
 					}
 				}
