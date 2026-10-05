@@ -23,7 +23,7 @@ namespace JASS
       		ACCUMULATOR_TYPE accumulator[MAX_DOCUMENTS];							///< The accumulators, one per document in the collection
         	DOCID_TYPE needed_for_top_k;												///< The number of results we still need in order to fill the top-k
          	ACCUMULATOR_TYPE *top_results[MAX_TOP_K];
-         	uint32_t score_freq[MAX_RSV+1];							///< Array of document score frequencies
+         	size_t score_freq[MAX_RSV+1];							///< Array of document score frequencies
           	docid_rsv_pair next_result;							///< A single result, used by get_first() and get_next()
            	DOCID_TYPE next_result_location;							///< Used by get_first() and get_next() to determine which result is next
             bool sorted;																	///< Has accumulator_pointer been sorted (false after rewind() true after sort())
@@ -161,13 +161,27 @@ namespace JASS
 							}
 						current_score--;
 						}
+					size_t total_top_k_contenders = top_k_contenders;
 					top_k_contenders = (top_k_contenders < top_k) ? top_k_contenders : top_k;
+					score_freq[top_k_lower_bound] -= total_top_k_contenders - top_k_contenders;
 					//now populate the top-k using the score_freq array
 					ACCUMULATOR_TYPE *current_accumulator = accumulator + documents;
+					//there may be more documents than needed at the lowest score
+					while (score_freq[top_k_lower_bound] > 0)
+						{
+						if (*current_accumulator >= top_k_lower_bound)
+							{
+							top_results[score_positions[*current_accumulator]++] = current_accumulator;
+							score_freq[*current_accumulator]--;
+							top_k_contenders--;
+							needed_for_top_k--;
+							}
+						current_accumulator--;
+						}
+					//we've taken all the necessary documents at the lower bound
 					while (top_k_contenders > 0)
 						{
-						//there may be more documents than needed at the lowest score
-						if (*current_accumulator >= top_k_lower_bound && score_positions[*current_accumulator]<top_k)
+						if (*current_accumulator > top_k_lower_bound)
 							{
 							top_results[score_positions[*current_accumulator]++] = current_accumulator;
 							top_k_contenders--;
