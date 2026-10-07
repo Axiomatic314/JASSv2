@@ -104,7 +104,6 @@ namespace JASS
 				if (next_result_location >= top_k - needed_for_top_k)
 					return NULL;
 
-				// size_t id = accumulator_pointers[top_k - next_result_location - 1].pointer() - &accumulator[0];
 				size_t id = top_results[next_result_location] - accumulator;
 				next_result.document_id = id;
 				next_result.primary_key = &((*primary_keys)[id]);
@@ -128,7 +127,7 @@ namespace JASS
 				sorted = false;
 				query::rewind(largest_possible_rsv);
 				::memset(accumulator, 0, documents * sizeof(*accumulator));
-				::memset(score_freq,0,MAX_RSV * sizeof(*score_freq));
+				::memset(score_freq, 0, MAX_RSV * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 				needed_for_top_k = this->top_k;
 				}
@@ -142,56 +141,46 @@ namespace JASS
 			*/
 			virtual void sort(void)
 				{
-					if (!sorted)
+				if (!sorted)
 					{
+					if (score_freq[0] == documents)
+						return;  // all documents scored 0
+
 					//find the top-k lower bound and the positions of the contenders
-					ACCUMULATOR_TYPE top_k_lower_bound = MAX_RSV;
-					ACCUMULATOR_TYPE current_score = MAX_RSV;
+					ACCUMULATOR_TYPE top_k_lower_bound = 1;
+					ACCUMULATOR_TYPE **score_positions[MAX_RSV + 1];
 					size_t top_k_contenders = 0;
-					size_t score_positions[MAX_RSV+1];
-					if (score_freq[0] == documents) //all documents scored 0
-						return;
-					while (current_score > 0 && top_k_contenders < needed_for_top_k)
-						{
+
+					ACCUMULATOR_TYPE **where = top_results;
+					for (ACCUMULATOR_TYPE current_score = MAX_RSV; current_score > 0; current_score--)
 						if (score_freq[current_score] > 0)
 							{
-							score_positions[current_score] = top_k_contenders;
-							top_k_contenders += score_freq[current_score];
-							top_k_lower_bound = current_score;
+							score_positions[current_score] = where;
+							where += score_freq[current_score];
+							if ((top_k_contenders += score_freq[current_score]) >= top_k)
+								{
+								top_k_lower_bound = current_score;
+								break;
+								}
 							}
-						current_score--;
-						}
-					size_t total_top_k_contenders = top_k_contenders;
+
 					top_k_contenders = (top_k_contenders < top_k) ? top_k_contenders : top_k;
-					score_freq[top_k_lower_bound] -= total_top_k_contenders - top_k_contenders;
-					//now populate the top-k using the score_freq array
-					ACCUMULATOR_TYPE *current_accumulator = accumulator + documents;
-					//there may be more documents than needed at the lowest score
-					while (score_freq[top_k_lower_bound] > 0)
-						{
+					needed_for_top_k = top_k - top_k_contenders;
+
+					//now populate the top-k using the score_positions array
+					for (ACCUMULATOR_TYPE *current_accumulator = accumulator; current_accumulator <  accumulator + documents; current_accumulator++)
 						if (*current_accumulator >= top_k_lower_bound)
 							{
-							top_results[score_positions[*current_accumulator]++] = current_accumulator;
-							score_freq[*current_accumulator]--;
-							top_k_contenders--;
-							needed_for_top_k--;
+							*score_positions[*current_accumulator]++ = current_accumulator;
+							if (--top_k_contenders <= 0)
+								break;
+							if (score_positions[*current_accumulator] > top_results + top_k-1)
+								top_k_lower_bound++;
 							}
-						current_accumulator--;
-						}
-					//we've taken all the necessary documents at the lower bound
-					while (top_k_contenders > 0)
-						{
-						if (*current_accumulator > top_k_lower_bound)
-							{
-							top_results[score_positions[*current_accumulator]++] = current_accumulator;
-							top_k_contenders--;
-							needed_for_top_k--;
-							}
-						current_accumulator--;
-						}
-					sorted = true;
 					}
+					sorted = true;
 				}
+				
 
 			/*
 				QUERY_FREQ::ADD_RSV()
