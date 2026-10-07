@@ -70,7 +70,6 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				::memset(accumulator,0,documents * sizeof(*accumulator));
-				// top_results.set_top_k(top_k);
 				::memset(score_freq,0,MAX_RSV * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 
@@ -168,19 +167,28 @@ namespace JASS
 					needed_for_top_k = top_k - top_k_contenders;
 
 					//now populate the top-k using the score_positions array
-					for (ACCUMULATOR_TYPE *current_accumulator = accumulator; current_accumulator <  accumulator + documents; current_accumulator++)
+					ACCUMULATOR_TYPE *current_accumulator = accumulator;
+					for (; current_accumulator <  accumulator + documents; current_accumulator++)
 						if (*current_accumulator >= top_k_lower_bound)
 							{
 							*score_positions[*current_accumulator]++ = current_accumulator;
-							if (--top_k_contenders <= 0)
+							top_k_contenders--;
+							if (score_positions[*current_accumulator] > top_results + top_k - 1)
 								break;
-							if (score_positions[*current_accumulator] > top_results + top_k-1)
-								top_k_lower_bound++;
 							}
+					//we've taken all the documents at the lower-bound
+					if (top_k_contenders > 0)
+						for (; current_accumulator <  accumulator + documents; current_accumulator++)
+							if (*current_accumulator > top_k_lower_bound)
+								{
+								*score_positions[*current_accumulator]++ = current_accumulator;
+								if (--top_k_contenders <= 0)
+									break;
+								}
 					}
 					sorted = true;
 				}
-				
+
 
 			/*
 				QUERY_FREQ::ADD_RSV()
