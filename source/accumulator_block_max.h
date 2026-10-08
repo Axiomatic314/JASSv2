@@ -13,8 +13,9 @@
 #pragma once
 
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 #include <immintrin.h>
 
 #include <new>
@@ -171,9 +172,16 @@ namespace JASS
 				{
 				accumulator[which] += value;
 
-				if (accumulator[which] > block_max[which_block(which)])
-					block_max[which_block(which)] = accumulator[which];
-				}
+				/*
+					The version has a branch in the assembly (checked by hand).
+				*/
+				// if (accumulator[which] > block_max[which_block(which)])
+				// 	block_max[which_block(which)] = accumulator[which];
+				/*
+					Branch-free version (assembly checked by hand)
+				*/
+				block_max[which_block(which)] = (accumulator[which] > block_max[which_block(which)]) ? accumulator[which] : block_max[which_block(which)];
+			}
 
 			/*
 				ACCUMULATOR_BLOCK_MAX::OPERATOR[]()
