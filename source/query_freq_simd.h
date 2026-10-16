@@ -175,11 +175,12 @@ namespace JASS
 				   			{
 				        	if ((position = _tzcnt_u64(ticket)) == 64)
 				            	break;
-							size_t docid = (uint8_t *)batch - accumulator + position;
-				         	*score_positions[accumulator[docid]]++ = accumulator + docid;
+
+							ACCUMULATOR_TYPE *current_accumulator = (ACCUMULATOR_TYPE *)batch + position;
+				         	*score_positions[*current_accumulator]++ = current_accumulator;
 							if (--top_k_contenders <= 0)
 								goto done;
-							if (score_positions[accumulator[docid]] > top_results + top_k - 1)
+							if (score_positions[*current_accumulator] > top_results + top_k - 1)
 								{
 								__mmask64 prev_ticket = ticket;
 								lower_bound = _mm512_set1_epi8(++top_k_lower_bound);
