@@ -117,9 +117,10 @@ namespace JASS
 				width = (size_t)1 << shift;
 
 				/*
-					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row
+					Round up the number of dirty flags so that if the number of accumulators isn't a square that we don't miss the last row. Also ensure there are enough blocks to use AVX512 instructions.
 				*/
 				number_of_blocks = (number_of_accumulators + width - 1) / width;
+				number_of_blocks += 64;
 
 				/*
 					Round up the number of accumulators to make a rectangle so scanning is faster
