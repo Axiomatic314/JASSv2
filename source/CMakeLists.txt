@@ -189,7 +189,9 @@ set(JASSlib_FILES
 	query.h
 	query_block_max.h
 	query_chunk_freq.h
+	query_chunk_freq_simd.h
 	query_freq.h
+	query_freq_simd.h
 	query_heap.h
 	query_simple.h
 	query_term.h

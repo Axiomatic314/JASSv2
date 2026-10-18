@@ -21,7 +21,9 @@
 #include "compress_integer.h"
 #include "accumulator_simple.h"
 #include "query_freq.h"
+#include "query_freq_simd.h"
 #include "query_chunk_freq.h"
+#include "query_chunk_freq_simd.h"
 
 namespace JASS_anytime_accumulator_manager
 	{
@@ -49,8 +51,12 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_block_max(codex);
 		else if (name == "freq")
 			return new JASS::query_freq(codex);
+		else if (name == "freq_simd")
+		    return new JASS::query_freq_simd(codex);
 		else if (name == "chunk_freq")
 			return new JASS::query_chunk_freq(codex);
+		else if (name == "chunk_freq_simd")
+		    return new JASS::query_chunk_freq_simd(codex);
 		else
 			{
 			std::cout << "ACCUMULATOR MANAGER IS UNKNOWN! USING 2d_heap\n";
