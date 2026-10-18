@@ -70,7 +70,7 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				::memset(accumulator,0,documents * sizeof(*accumulator));
-				::memset(score_freq,0,MAX_RSV * sizeof(*score_freq));
+				::memset(score_freq,0,(MAX_RSV + 1) * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 
 				}
@@ -126,7 +126,7 @@ namespace JASS
 				sorted = false;
 				query::rewind(largest_possible_rsv);
 				::memset(accumulator, 0, documents * sizeof(*accumulator));
-				::memset(score_freq, 0, MAX_RSV * sizeof(*score_freq));
+				::memset(score_freq, 0, (MAX_RSV + 1) * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 				needed_for_top_k = this->top_k;
 				}
@@ -142,6 +142,7 @@ namespace JASS
 				{
 				if (!sorted)
 					{
+					sorted=true;
 					if (score_freq[0] == documents)
 						return;  // all documents scored 0
 
@@ -186,7 +187,6 @@ namespace JASS
 									break;
 								}
 					}
-					sorted = true;
 				}
 
 

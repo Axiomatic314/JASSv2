@@ -1,5 +1,5 @@
 /*
-	QUERY_FREQ.H
+	QUERY_FREQ_SIMD.H
 	--------------
 */
 #pragma once
@@ -15,7 +15,7 @@
 
 namespace JASS
     {
-    class query_freq : public query
+    class query_freq_simd : public query
     	{
      	// private:
       // 		typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
@@ -30,13 +30,13 @@ namespace JASS
 
       	public:
      		/*
-				QUERY_FREQ::QUERY_FREQ()
+				QUERY_FREQ_SIMD::QUERY_FREQ_SIMD()
 				----------------------------
 			*/
 			/*!
 				@brief Constructor
 			*/
-       		query_freq(compress_integer &codex) :
+       		query_freq_simd(compress_integer &codex) :
          		query(codex)
            		// top_results(accumulator_pointers, top_k)
            		{
@@ -44,19 +44,19 @@ namespace JASS
              	}
 
             /*
-				QUERY_FREQ::~QUERY_FREQ()
+				QUERY_FREQ_SIMD::~QUERY_FREQ_SIMD()
 				-----------------------------
 			*/
 			/*!
 				@brief Destructor
 			*/
-            virtual ~query_freq()
+            virtual ~query_freq_simd()
             	{
              	/* Nothing */
              	}
 
             /*
-				QUERY_FREQ::INIT()
+				QUERY_FREQ_SIMD::INIT()
 				--------------------
 			*/
 			/*!
@@ -70,13 +70,13 @@ namespace JASS
 				{
 				query::init(primary_keys, documents, top_k);
 				::memset(accumulator,0,documents * sizeof(*accumulator));
-				::memset(score_freq,0,MAX_RSV * sizeof(*score_freq));
+				::memset(score_freq,0,(MAX_RSV + 1) * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 
 				}
 
 			/*
-				QUERY_FREQ::GET_FIRST()
+				QUERY_FREQ_SIMD::GET_FIRST()
 				----------------------------
 			*/
 			/*!
@@ -91,7 +91,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_FREQ::GET_NEXT()
+				QUERY_FREQ_SIMD::GET_NEXT()
 				------------------------
 			*/
 			/*!
@@ -115,7 +115,7 @@ namespace JASS
 
 
 			/*
-				QUERY_FREQ::REWIND()
+				QUERY_FREQ_SIMD::REWIND()
 				----------------------
 			*/
 			/*!
@@ -126,13 +126,13 @@ namespace JASS
 				sorted = false;
 				query::rewind(largest_possible_rsv);
 				::memset(accumulator, 0, documents * sizeof(*accumulator));
-				::memset(score_freq, 0, MAX_RSV * sizeof(*score_freq));
+				::memset(score_freq, 0, (MAX_RSV + 1) * sizeof(*score_freq));
 				score_freq[0] = documents; //all documents start with a score of 0
 				needed_for_top_k = this->top_k;
 				}
 
 			/*
-				QUERY_FREQ::SORT()
+				QUERY_FREQ_SIMD::SORT()
 				--------------------
 			*/
 			/*!
@@ -142,6 +142,7 @@ namespace JASS
 				{
 				if (!sorted)
 					{
+					sorted=true;
 					if (score_freq[0] == documents)
 						return;  // all documents scored 0
 
@@ -190,13 +191,12 @@ namespace JASS
 				         	}
 						}
 					}
-					done:
-					sorted = true;
+					done:;
 				}
 
 
 			/*
-				QUERY_FREQ::ADD_RSV()
+				QUERY_FREQ_SIMD::ADD_RSV()
 				-----------------------
 			*/
 			/*!
@@ -212,7 +212,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_FREQ::DECODE_WITH_WRITER()
+				QUERY_FREQ_SIMD::DECODE_WITH_WRITER()
 				----------------------------------
 			*/
 			/*!
@@ -256,7 +256,7 @@ namespace JASS
 					{
 					std::vector<std::string> keys = {"one", "two", "three", "four"};
 					compress_integer_variable_byte codex;
-					query_freq *query_object = new query_freq(codex);
+					query_freq_simd *query_object = new query_freq_simd(codex);
 					query_object->init(keys, 1024, 2);
 					std::ostringstream string;
 
@@ -289,7 +289,7 @@ namespace JASS
 							JASS_assert(term.token() == "three");
 						}
 
-					puts("query_freq::PASSED");
+					puts("query_freq_simd::PASSED");
 					}
 
      	};
