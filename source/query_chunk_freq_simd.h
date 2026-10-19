@@ -245,9 +245,13 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-				score_freq[accumulators.accumulator[document_id]]--;
-				accumulators.add(document_id, score);
-				score_freq[accumulators.accumulator[document_id]]++;
+				auto *acc = &accumulators.accumulator[document_id];
+				auto *bm = &accumulators.block_max[accumulators.which_block(document_id)];
+
+				score_freq[*acc]--;
+				*acc += score;
+				*bm = (*acc > *bm) ? *acc : *bm;
+				score_freq[*acc]++;
 				}
 
 			/*
@@ -274,6 +278,8 @@ namespace JASS
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
+				ACCUMULATOR_TYPE *accumulators_array = accumulators.accumulator;
+				ACCUMULATOR_TYPE *block_max_array =  accumulators.block_max;
 				const DOCID_TYPE *end = buffer + integers;
 #if defined(__clang__)
 				#pragma unroll 8
@@ -281,7 +287,16 @@ namespace JASS
 				#pragma GCC unroll 8
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
-					add_rsv(*current, impact);
+					{
+					DOCID_TYPE document_id = *current;
+					ACCUMULATOR_TYPE *acc = accumulators_array + document_id;
+					ACCUMULATOR_TYPE *bm = block_max_array + accumulators.which_block(document_id);
+
+					score_freq[*acc]--;
+					*acc += impact;
+					score_freq[*acc]++;
+					*bm = (*acc > *bm) ? *acc : *bm;
+					}
 				}
 
 			/*
