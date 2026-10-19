@@ -39,7 +39,7 @@ static auto parameters = std::make_tuple								///< The  command line parameter
 	JASS::commandline::parameter("-2",   "--v2_index",     "                      The index is a JASS v2 index", parameter_index_v2),
 	JASS::commandline::parameter("-I2",  "--v2_index",     "                      The index is a JASS v2 index", parameter_index_v2),
 	JASS::commandline::parameter("-a",   "--asciiparser",  "                      Use simple query parser (ASCII seperated pre-casefolded tokens)", parameter_ascii_query_parser),
-	JASS::commandline::parameter("-A",   "--accumulators", "<accumulator_manager> Which accumulator manager (2d_heap|1d_heap|simple|blockmax|freq|freq_simd|chunk_freq|chunk_freq_simd) to use [default = 2d_heap]", parameter_accumulator_manager),
+	JASS::commandline::parameter("-A",   "--accumulators", "<accumulator_manager> Which accumulator manager (2d_heap|1d_heap|simple|simple_simd|blockmax|freq|freq_simd|chunk_freq|chunk_freq_simd) to use [default = 2d_heap]", parameter_accumulator_manager),
 	JASS::commandline::parameter("-k",   "--top-k",        "<top-k>               Number of results to return to the user (top-k value) [default = -k10]", parameter_top_k),
 	JASS::commandline::parameter("-q",   "--queryfile",    "<filename>            Name of file containing a list of queries (1 per line, each line prefixed with query-id)", parameter_queryfilename),
 	JASS::commandline::parameter("-r",   "--rho",          "<integer_percent>     Percent of the collection size to use as max number of postings to process [default = -r100] (overrides -R)", rho),
