@@ -1,5 +1,5 @@
 /*
-	QUERY_CHUNK_FREQ.H
+	QUERY_CHUNK_FREQ_SIMD.H
 	-----------------
 	Copyright (c) 2025 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
@@ -14,21 +14,24 @@
 */
 #pragma once
 
+#include "forceinline.h"
 #include "maths.h"
 #include "query.h"
 #include "compress_integer.h"
 #include "accumulator_block_max.h"
+#include <cstdint>
+#include <immintrin.h>
 
 namespace JASS
 	{
 	/*
-		CLASS QUERY_CHUNK_FREQ
+		CLASS QUERY_CHUNK_FREQ_SIMD
 		---------------------
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
 	*/
-	class query_chunk_freq : public query
+	class query_chunk_freq_simd : public query
 		{
 		// private:
 		// 	typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
@@ -45,32 +48,32 @@ namespace JASS
 
 		public:
 			/*
-				QUERY_CHUNK_FREQ::QUERY_CHUNK_FREQ()
+				QUERY_CHUNK_FREQ_SIMD::QUERY_CHUNK_FREQ_SIMD()
 				----------------------------------
 			*/
 			/*!
 				@brief Constructor
 			*/
-			query_chunk_freq(compress_integer &codex) :
+			query_chunk_freq_simd(compress_integer &codex) :
 				query(codex)
 				{
 				rewind();
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::~QUERY_CHUNK_FREQ()
+				QUERY_CHUNK_FREQ_SIMD::~QUERY_CHUNK_FREQ_SIMD()
 				-----------------------------------
 			*/
 			/*!
 				@brief Destructor
 			*/
-			virtual ~query_chunk_freq()
+			virtual ~query_chunk_freq_simd()
 				{
 				/* Nothing */
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::INIT()
+				QUERY_CHUNK_FREQ_SIMD::INIT()
 				-----------------------
 			*/
 			/*!
@@ -89,7 +92,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::GET_FIRST()
+				QUERY_CHUNK_FREQ_SIMD::GET_FIRST()
 				----------------------------
 			*/
 			/*!
@@ -104,7 +107,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::GET_NEXT()
+				QUERY_CHUNK_FREQ_SIMD::GET_NEXT()
 				---------------------------
 			*/
 			/*!
@@ -128,7 +131,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::REWIND()
+				QUERY_CHUNK_FREQ_SIMD::REWIND()
 				-------------------------
 			*/
 			/*!
@@ -145,11 +148,11 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::SORT()
+				QUERY_CHUNK_FREQ_SIMD::SORT()
 				-----------------------
 			*/
 			/*!
-				@brief sort this resuls list before iteration over it.
+				@brief sort this results list before iteration over it.
 				@details  In block_max processing, we scan the block_max scores looking for instances
 				where the score is greater than the bottom of the heap. If we find one then its necessary
 				to scan that block looking for instances where an accumulator is greater than the bottom
@@ -189,41 +192,49 @@ namespace JASS
 						Here we scan the block looking for values that need to be inserted into the top-k heap.  If a
 						block max score is less than the bottom of the heap we can skip the block, thus avoiding a full scan
 					*/
-					ACCUMULATOR_TYPE *which_accumulator = accumulators.accumulator;
-					ACCUMULATOR_TYPE *which_block = accumulators.block_max;
-					ACCUMULATOR_TYPE *end = accumulators.block_max + accumulators.number_of_blocks;
-					while (which_block < end)
+
+					__m512i lower_bound = _mm512_set1_epi8(top_k_lower_bound - 1);
+					__m512i *end_block = (__m512i *)((uint8_t *)accumulators.block_max + accumulators.number_of_blocks);
+					for (__m512i *which_block = (__m512i *)accumulators.block_max; which_block < end_block; which_block++)
 						{
-						if (*which_block >= top_k_lower_bound)
+						uint64_t block_position;
+						for(__mmask64 block_ticket = _mm512_cmpgt_epu8_mask(*which_block, lower_bound); block_ticket != 0; block_ticket ^= (uint64_t)1 << block_position)
 							{
-							/*
-								There's a score in this block that's larger than the bottom of the heap, so a potential candidate
-							*/
-							ACCUMULATOR_TYPE *current_accumulator = which_accumulator;
-							ACCUMULATOR_TYPE *end_accumulator = which_accumulator + accumulators.width;
-							while (current_accumulator < end_accumulator)
+							if ((block_position = _tzcnt_u64(block_ticket)) == 64)
+								break;
+
+							size_t current_block = (uint8_t *)which_block - accumulators.block_max + block_position;
+							ACCUMULATOR_TYPE *start_accumulator = accumulators.accumulator + (current_block * accumulators.width);
+							ACCUMULATOR_TYPE *end_accumulator = start_accumulator + accumulators.width;
+
+							__m512i *end = (__m512i *)end_accumulator;
+							for (__m512i *batch = (__m512i *)start_accumulator; batch < end; batch++)
 								{
-								if (*current_accumulator >= top_k_lower_bound)
+								uint64_t position;
+							    for (__mmask64 ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
 									{
-									*score_positions[*current_accumulator]++ = current_accumulator;
+							        position = _tzcnt_u64(ticket);
+
+									ACCUMULATOR_TYPE *current_accumulator = (ACCUMULATOR_TYPE *)batch + position;
+							        *score_positions[*current_accumulator]++ = current_accumulator;
 									if (--top_k_contenders <= 0)
-										break;
+										return;
 									if (score_positions[*current_accumulator] > top_results + top_k - 1)
-										top_k_lower_bound++;
-									}
-								current_accumulator++;
+										{
+										__mmask64 prev_ticket = ticket;
+										lower_bound = _mm512_set1_epi8(top_k_lower_bound);
+										ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound) & prev_ticket;
+										ticket ^= (uint64_t)1 << position;
+										}
+						         	}
 								}
 							}
-						if (top_k_contenders <= 0)
-							break;
-						which_accumulator += accumulators.width;
-						which_block++;
 						}
 					}
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::ADD_RSV()
+				QUERY_CHUNK_FREQ_SIMD::ADD_RSV()
 				--------------------------
 			*/
 			/*!
@@ -233,13 +244,17 @@ namespace JASS
 			*/
 			forceinline void add_rsv(DOCID_TYPE document_id, ACCUMULATOR_TYPE score)
 				{
-				score_freq[accumulators.accumulator[document_id]]--;
-				accumulators.add(document_id, score);
-				score_freq[accumulators.accumulator[document_id]]++;
+				auto *acc = &accumulators.accumulator[document_id];
+				auto *bm = &accumulators.block_max[accumulators.which_block(document_id)];
+
+				score_freq[*acc]--;
+				*acc += score;
+				*bm = (*acc > *bm) ? *acc : *bm;
+				score_freq[*acc]++;
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::DECODE_WITH_WRITER()
+				QUERY_CHUNK_FREQ_SIMD::DECODE_WITH_WRITER()
 				-------------------------------------
 			*/
 			/*!
@@ -262,6 +277,8 @@ namespace JASS
 					Process the d1-decoded postings list.  We ask the compiler to unroll the loop as it
 					appears to be as fast as manually unrolling it.
 				*/
+				ACCUMULATOR_TYPE *accumulators_array = accumulators.accumulator;
+				ACCUMULATOR_TYPE *block_max_array =  accumulators.block_max;
 				const DOCID_TYPE *end = buffer + integers;
 #if defined(__clang__)
 				#pragma unroll 8
@@ -269,11 +286,20 @@ namespace JASS
 				#pragma GCC unroll 8
 #endif
 				for (DOCID_TYPE *current = buffer; current < end; current++)
-					add_rsv(*current, impact);
+					{
+					DOCID_TYPE document_id = *current;
+					ACCUMULATOR_TYPE *acc = accumulators_array + document_id;
+					ACCUMULATOR_TYPE *bm = block_max_array + accumulators.which_block(document_id);
+
+					score_freq[*acc]--;
+					*acc += impact;
+					score_freq[*acc]++;
+					*bm = (*acc > *bm) ? *acc : *bm;
+					}
 				}
 
 			/*
-				QUERY_CHUNK_FREQ::UNITTEST()
+				QUERY_CHUNK_FREQ_SIMD::UNITTEST()
 				---------------------------
 			*/
 			/*!
@@ -283,7 +309,7 @@ namespace JASS
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
 				compress_integer_variable_byte codex;
-				query_chunk_freq *query_object = new query_chunk_freq(codex);
+				query_chunk_freq_simd *query_object = new query_chunk_freq_simd(codex);
 				query_object->init(keys, 1024, 2);
 				std::ostringstream string;
 
@@ -316,7 +342,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
-				puts("query_chunk_freq::PASSED");
+				puts("query_chunk_freq_simd::PASSED");
 				}
 		};
 	}

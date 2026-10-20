@@ -12,14 +12,15 @@
 */
 #pragma once
 
+#include <stdint.h>
+#include <immintrin.h>
+
+#include "heap.h"
 #include "simd.h"
 #include "query.h"
 #include "pointer_box.h"
 #include "top_k_qsort.h"
 #include "compress_integer_variable_byte.h"
-#include "heap.h"
-#include <cstdint>
-#include <immintrin.h>
 
 namespace JASS
 	{
@@ -117,8 +118,6 @@ namespace JASS
 				if (next_result_location >= top_k - needed_for_top_k)
 					return NULL;
 
-				// size_t id = top_results[next_result_location] - accumulator;
-				// size_t id = accumulators.get_index(accumulator_pointers[top_k - next_result_location - 1].pointer());
 				size_t id = accumulator_pointers[top_k - next_result_location - 1].pointer() - &accumulator[0];
 				next_result.document_id = id;
 				next_result.primary_key = &((*primary_keys)[id]);
@@ -155,16 +154,15 @@ namespace JASS
 				{
 				if (!sorted)
 				    {
-					ACCUMULATOR_TYPE bottom_of_heap = 1;
-					__m512i lower_bound = _mm512_set1_epi8(bottom_of_heap);
+					__m512i lower_bound = _mm512_set1_epi8(0);
 					__m512i *end = (__m512i *)(accumulator + documents);
 					for (__m512i *batch = (__m512i *)accumulator; batch < end; batch++)
 					    {
 						uint64_t position;
-						for (__mmask64 ticket = _mm512_cmpge_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
+						for (__mmask64 ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
 						    {
-							if ((position = _tzcnt_u64(ticket)) == 64)
-							    break;
+							position = _tzcnt_u64(ticket);
+
 							ACCUMULATOR_TYPE *current_accumulator = (ACCUMULATOR_TYPE *) batch + position;
 							if (needed_for_top_k > 0)
 							    {
@@ -173,34 +171,20 @@ namespace JASS
 								if (needed_for_top_k == 0)
 								    {
 									top_results.make_heap();
-									bottom_of_heap = *accumulator_pointers[0];
+									lower_bound = _mm512_set1_epi8(*accumulator_pointers[0]);
 									}
 								}
 							else
 							    {
 								//the heap is already full, so evict the bottom one and a new one
 								top_results.push_back(current_accumulator);
-								bottom_of_heap = *accumulator_pointers[0]; //set new bottom of heap value
+								lower_bound = _mm512_set1_epi8(*accumulator_pointers[0]);
 								}
 							}
-						    lower_bound = _mm512_set1_epi8(bottom_of_heap);
 						}
-					    top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
-						sorted = true;
+					top_k_qsort::sort(accumulator_pointers + needed_for_top_k, top_k - needed_for_top_k, top_k);
+					sorted = true;
 					}
-
-				// if (!sorted)
-				// 	std::partial_sort(accumulator_pointers, accumulator_pointers + top_k, accumulator_pointers + documents,
-				// 		[](ACCUMULATOR_TYPE *a, ACCUMULATOR_TYPE *b) -> bool
-				// 		{
-				// 		if (*a > *b)
-				// 			return true;
-				// 		else if (*a == *b && a > b)
-				// 			return true;
-				// 		return false;
-				// 		}
-    //         		);
-				// sorted = true;
 				}
 
 			/*

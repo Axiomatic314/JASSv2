@@ -9,6 +9,7 @@
 // #include "heap.h"
 #include "simd.h"
 #include "compress_integer_variable_byte.h"
+#include <immintrin.h>
 #include <iostream>
 // #include "top_k_qsort.h"
 
@@ -167,15 +168,14 @@ namespace JASS
 					top_k_contenders = (top_k_contenders < top_k) ? top_k_contenders : top_k;
 					needed_for_top_k = top_k - top_k_contenders;
 
-					__m512i lower_bound = _mm512_set1_epi8(top_k_lower_bound);
+					__m512i lower_bound = _mm512_set1_epi8(top_k_lower_bound - 1);
 					__m512i *end = (__m512i *)(accumulator + documents);
 				    for (__m512i *batch = (__m512i *)accumulator; batch < end; batch++)
 				    	{
 				    	uint64_t position;
-				        for (__mmask64 ticket = _mm512_cmpge_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
+				        for (__mmask64 ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
 				   			{
-				        	if ((position = _tzcnt_u64(ticket)) == 64)
-				            	break;
+				        	position = _tzcnt_u64(ticket);
 
 							ACCUMULATOR_TYPE *current_accumulator = (ACCUMULATOR_TYPE *)batch + position;
 				         	*score_positions[*current_accumulator]++ = current_accumulator;
@@ -184,8 +184,8 @@ namespace JASS
 							if (score_positions[*current_accumulator] > top_results + top_k - 1)
 								{
 								__mmask64 prev_ticket = ticket;
-								lower_bound = _mm512_set1_epi8(++top_k_lower_bound);
-								ticket = _mm512_cmpge_epu8_mask(*batch, lower_bound) & prev_ticket;
+								lower_bound = _mm512_set1_epi8(top_k_lower_bound);
+								ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound) & prev_ticket;
 								ticket ^= (uint64_t)1 << position;
 								}
 				         	}

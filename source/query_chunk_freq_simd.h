@@ -192,16 +192,14 @@ namespace JASS
 						Here we scan the block looking for values that need to be inserted into the top-k heap.  If a
 						block max score is less than the bottom of the heap we can skip the block, thus avoiding a full scan
 					*/
-
-					__m512i lower_bound = _mm512_set1_epi8(top_k_lower_bound);
+					__m512i lower_bound = _mm512_set1_epi8(top_k_lower_bound - 1);
 					__m512i *end_block = (__m512i *)((uint8_t *)accumulators.block_max + accumulators.number_of_blocks);
 					for (__m512i *which_block = (__m512i *)accumulators.block_max; which_block < end_block; which_block++)
 						{
 						uint64_t block_position;
-						for(__mmask64 block_ticket = _mm512_cmpge_epu8_mask(*which_block, lower_bound); block_ticket != 0; block_ticket ^= (uint64_t)1 << block_position)
+						for(__mmask64 block_ticket = _mm512_cmpgt_epu8_mask(*which_block, lower_bound); block_ticket != 0; block_ticket ^= (uint64_t)1 << block_position)
 							{
-							if ((block_position = _tzcnt_u64(block_ticket)) == 64)
-								break;
+							block_position = _tzcnt_u64(block_ticket);
 
 							size_t current_block = (uint8_t *)which_block - accumulators.block_max + block_position;
 							ACCUMULATOR_TYPE *start_accumulator = accumulators.accumulator + (current_block * accumulators.width);
@@ -211,10 +209,9 @@ namespace JASS
 							for (__m512i *batch = (__m512i *)start_accumulator; batch < end; batch++)
 								{
 								uint64_t position;
-							    for (__mmask64 ticket = _mm512_cmpge_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
+							    for (__mmask64 ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound); ticket != 0; ticket ^= (uint64_t)1 << position)
 									{
-							        if ((position = _tzcnt_u64(ticket)) == 64)
-							            break;
+							        position = _tzcnt_u64(ticket);
 
 									ACCUMULATOR_TYPE *current_accumulator = (ACCUMULATOR_TYPE *)batch + position;
 							        *score_positions[*current_accumulator]++ = current_accumulator;
@@ -223,8 +220,8 @@ namespace JASS
 									if (score_positions[*current_accumulator] > top_results + top_k - 1)
 										{
 										__mmask64 prev_ticket = ticket;
-										lower_bound = _mm512_set1_epi8(++top_k_lower_bound);
-										ticket = _mm512_cmpge_epu8_mask(*batch, lower_bound) & prev_ticket;
+										lower_bound = _mm512_set1_epi8(top_k_lower_bound);
+										ticket = _mm512_cmpgt_epu8_mask(*batch, lower_bound) & prev_ticket;
 										ticket ^= (uint64_t)1 << position;
 										}
 						         	}
