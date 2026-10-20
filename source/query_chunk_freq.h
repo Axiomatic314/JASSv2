@@ -1,5 +1,5 @@
 /*
-	QUERY_CHUNK_FREQ_SIMD.H
+	QUERY_CHUNK_FREQ.H
 	-----------------
 	Copyright (c) 2025 Andrew Trotman
 	Released under the 2-clause BSD license (See:https://en.wikipedia.org/wiki/BSD_licenses)
@@ -25,13 +25,13 @@
 namespace JASS
 	{
 	/*
-		CLASS QUERY_CHUNK_FREQ_SIMD
+		CLASS QUERY_CHUNK_FREQ
 		---------------------
 	*/
 	/*!
 		@brief Everything necessary to process a query is encapsulated in an object of this type
 	*/
-	class query_chunk_freq_simd : public query
+	class query_chunk_freq : public query
 		{
 		// private:
 		// 	typedef pointer_box<ACCUMULATOR_TYPE> accumulator_pointer;
@@ -48,32 +48,32 @@ namespace JASS
 
 		public:
 			/*
-				QUERY_CHUNK_FREQ_SIMD::QUERY_CHUNK_FREQ_SIMD()
+				QUERY_CHUNK_FREQ::QUERY_CHUNK_FREQ()
 				----------------------------------
 			*/
 			/*!
 				@brief Constructor
 			*/
-			query_chunk_freq_simd(compress_integer &codex) :
+			query_chunk_freq(compress_integer &codex) :
 				query(codex)
 				{
 				rewind();
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::~QUERY_CHUNK_FREQ_SIMD()
+				QUERY_CHUNK_FREQ::~QUERY_CHUNK_FREQ()
 				-----------------------------------
 			*/
 			/*!
 				@brief Destructor
 			*/
-			virtual ~query_chunk_freq_simd()
+			virtual ~query_chunk_freq()
 				{
 				/* Nothing */
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::INIT()
+				QUERY_CHUNK_FREQ::INIT()
 				-----------------------
 			*/
 			/*!
@@ -92,7 +92,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::GET_FIRST()
+				QUERY_CHUNK_FREQ::GET_FIRST()
 				----------------------------
 			*/
 			/*!
@@ -107,7 +107,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::GET_NEXT()
+				QUERY_CHUNK_FREQ::GET_NEXT()
 				---------------------------
 			*/
 			/*!
@@ -131,7 +131,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::REWIND()
+				QUERY_CHUNK_FREQ::REWIND()
 				-------------------------
 			*/
 			/*!
@@ -148,7 +148,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::SORT()
+				QUERY_CHUNK_FREQ::SORT()
 				-----------------------
 			*/
 			/*!
@@ -234,7 +234,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::ADD_RSV()
+				QUERY_CHUNK_FREQ::ADD_RSV()
 				--------------------------
 			*/
 			/*!
@@ -254,7 +254,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::DECODE_WITH_WRITER()
+				QUERY_CHUNK_FREQ::DECODE_WITH_WRITER()
 				-------------------------------------
 			*/
 			/*!
@@ -299,7 +299,7 @@ namespace JASS
 				}
 
 			/*
-				QUERY_CHUNK_FREQ_SIMD::UNITTEST()
+				QUERY_CHUNK_FREQ::UNITTEST()
 				---------------------------
 			*/
 			/*!
@@ -309,7 +309,7 @@ namespace JASS
 				{
 				std::vector<std::string> keys = {"one", "two", "three", "four"};
 				compress_integer_variable_byte codex;
-				query_chunk_freq_simd *query_object = new query_chunk_freq_simd(codex);
+				query_chunk_freq *query_object = new query_chunk_freq(codex);
 				query_object->init(keys, 1024, 2);
 				std::ostringstream string;
 
@@ -342,7 +342,7 @@ namespace JASS
 						JASS_assert(term.token() == "three");
 					}
 
-				puts("query_chunk_freq_simd::PASSED");
+				puts("query_chunk_freq::PASSED");
 				}
 		};
 	}
