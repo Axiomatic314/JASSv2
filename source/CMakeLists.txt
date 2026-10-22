@@ -194,6 +194,7 @@ set(JASSlib_FILES
 	query_freq_simd.h
 	query_heap.h
 	query_simple.h
+	query_simple_heap.h
 	query_simple_simd.h
 	query_term.h
 	query_term_list.h

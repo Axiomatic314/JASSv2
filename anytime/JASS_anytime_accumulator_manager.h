@@ -16,6 +16,7 @@
 
 #include "query_heap.h"
 #include "query_simple.h"
+#include "query_simple_heap.h"
 #include "query_simple_simd.h"
 #include "accumulator_2d.h"
 #include "query_block_max.h"
@@ -48,6 +49,8 @@ namespace JASS_anytime_accumulator_manager
 			return new JASS::query_heap<JASS::accumulator_simple<JASS::query::ACCUMULATOR_TYPE, JASS::query::MAX_DOCUMENTS>>(codex);
 		else if (name == "simple")
 			return new JASS::query_simple(codex);
+		else if (name == "simple_heap")
+			return new JASS::query_simple_heap(codex);
 		else if (name == "simple_simd")
 		    return new JASS::query_simple_simd(codex);
 		else if (name == "blockmax")
